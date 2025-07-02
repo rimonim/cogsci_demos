@@ -72,12 +72,26 @@ export const StroopThumbnail = ({ className = "" }) => {
           </div>
         </div>
         
-        {/* Color buttons */}
-        <div className="flex gap-3">
-          <button className="w-12 h-12 rounded-lg bg-red-500 hover:bg-red-600 transition-colors border border-red-600/20"></button>
-          <button className="w-12 h-12 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors border border-blue-600/20"></button>
-          <button className="w-12 h-12 rounded-lg bg-green-500 hover:bg-green-600 transition-colors border border-green-600/20"></button>
-          <button className="w-12 h-12 rounded-lg bg-yellow-500 hover:bg-yellow-600 transition-colors border border-yellow-600/20"></button>
+        {/* Keyboard response instructions */}
+        <div className="bg-white rounded-full px-5 py-2 border border-slate-200">
+          <div className="flex items-center gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">B</kbd>
+              <span className="text-blue-600 font-medium">Blue</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">R</kbd>
+              <span className="text-red-600 font-medium">Red</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">G</kbd>
+              <span className="text-green-600 font-medium">Green</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <kbd className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">Y</kbd>
+              <span className="text-yellow-600 font-medium">Yellow</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
