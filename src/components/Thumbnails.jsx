@@ -80,11 +80,6 @@ export const StroopThumbnail = ({ className = "" }) => {
           <button className="w-12 h-12 rounded-lg bg-yellow-500 hover:bg-yellow-600 transition-colors border border-yellow-600/20"></button>
         </div>
       </div>
-      
-      {/* Coming soon overlay */}
-      <div className="absolute top-3 right-3 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium border border-purple-200">
-        Coming Soon
-      </div>
     </div>
   );
 };

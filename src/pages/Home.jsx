@@ -49,8 +49,8 @@ export default function Home() {
               <div className="p-6">
                 <CardTitle className="text-xl mb-3">Stroop Task</CardTitle>
                 <Link to="/stroop">
-                  <Button variant="outline" className="w-full" disabled>
-                    Coming Soon
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                    Start Stroop Task
                   </Button>
                 </Link>
               </div>
