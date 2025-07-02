@@ -6,7 +6,7 @@ import { getTaskDisplayName } from "@/utils";
 
 export default function TaskSwitchDialog({ 
   currentTask, 
-  existingTasks, 
+  existingTasks = [], // Default to empty array
   dataCount,
   onClearAndContinue, 
   onCancel, 

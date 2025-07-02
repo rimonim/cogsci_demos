@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlankerThumbnail, StroopThumbnail } from '@/components/Thumbnails';
+import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail } from '@/components/Thumbnails';
 import UniversityLogo from '@/components/UniversityLogo';
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white border-slate-200 hover:border-blue-300 transition-colors overflow-hidden">
             <CardContent className="p-0">
               <div className="aspect-video">
@@ -50,6 +50,22 @@ export default function Home() {
                 <Link to="/stroop">
                   <Button className="w-full bg-purple-600 hover:bg-purple-700">
                     Start Stroop Task
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-slate-200 hover:border-emerald-300 transition-colors overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-video">
+                <VisualSearchThumbnail className="w-full h-full" />
+              </div>
+              <div className="p-6">
+                <CardTitle className="text-xl mb-3">Visual Search</CardTitle>
+                <Link to="/visual-search">
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                    Start Visual Search
                   </Button>
                 </Link>
               </div>

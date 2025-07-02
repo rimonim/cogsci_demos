@@ -60,15 +60,17 @@ export const detectExistingTaskData = async () => {
   // Fallback: check local storage
   const flankerData = JSON.parse(localStorage.getItem('flankerResults') || '[]');
   const stroopData = JSON.parse(localStorage.getItem('stroopResults') || '[]');
+  const visualSearchData = JSON.parse(localStorage.getItem('visualSearchResults') || '[]');
   
   const tasks = [];
   if (flankerData.length > 0) tasks.push('flanker');
   if (stroopData.length > 0) tasks.push('stroop');
+  if (visualSearchData.length > 0) tasks.push('visual_search');
   
   return {
     hasData: tasks.length > 0,
     tasks,
-    count: flankerData.length + stroopData.length
+    count: flankerData.length + stroopData.length + visualSearchData.length
   };
 };
 
@@ -89,6 +91,7 @@ export const clearAllTaskData = async () => {
   // Clear local storage
   localStorage.removeItem('flankerResults');
   localStorage.removeItem('stroopResults');
+  localStorage.removeItem('visualSearchResults');
   
   return { success: true };
 };
@@ -97,6 +100,7 @@ export const getTaskDisplayName = (taskType) => {
   switch (taskType) {
     case 'flanker': return 'Flanker Task';
     case 'stroop': return 'Stroop Task';
+    case 'visual_search': return 'Visual Search Task';
     default: return taskType;
   }
 };

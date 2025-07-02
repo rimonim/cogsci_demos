@@ -25,6 +25,7 @@ export default function Results() {
       // Also load from local storage for all task types
       const flankerLocal = JSON.parse(localStorage.getItem('flankerResults') || '[]');
       const stroopLocal = JSON.parse(localStorage.getItem('stroopResults') || '[]');
+      const visualSearchLocal = JSON.parse(localStorage.getItem('visualSearchResults') || '[]');
       
       // Add task_type to local data if missing
       const flankerLocalWithType = flankerLocal.map(item => ({
@@ -36,9 +37,14 @@ export default function Results() {
         ...item, 
         task_type: item.task_type || 'stroop'
       }));
+
+      const visualSearchLocalWithType = visualSearchLocal.map(item => ({
+        ...item, 
+        task_type: item.task_type || 'visual_search'
+      }));
       
       // Combine API and local data, removing duplicates
-      const allData = [...apiData, ...flankerLocalWithType, ...stroopLocalWithType];
+      const allData = [...apiData, ...flankerLocalWithType, ...stroopLocalWithType, ...visualSearchLocalWithType];
       
       // Remove duplicates based on timestamp and participant
       const uniqueData = allData.filter((item, index, self) => 
@@ -82,6 +88,7 @@ export default function Results() {
     if (isMixed) return "Mixed task performance analysis";
     if (primaryTask === 'flanker') return "Flanker task performance analysis";
     if (primaryTask === 'stroop') return "Stroop task performance analysis";
+    if (primaryTask === 'visual_search') return "Visual search task performance analysis";
     return "Cognitive task performance analysis";
   };
 
