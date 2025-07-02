@@ -2,15 +2,16 @@ import React, { useState, useEffect } from "react";
 import { FlankerResult } from "@/entities/FlankerResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Users, TrendingUp, Clock } from "lucide-react";
+import { Download, Users, TrendingUp, Clock, Trash2 } from "lucide-react";
+import { clearAllTaskData } from "@/utils";
 
 import ResultsSummary from "@/components/results/ResultsSummary";
 import ParticipantTable from "@/components/results/ParticipantTable";
-import ResultsChart from "@/components/results/ResultsChart";
 
 export default function Results() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     loadResults();
@@ -18,19 +19,77 @@ export default function Results() {
 
   const loadResults = async () => {
     try {
-      const data = await FlankerResult.list("-created_date");
-      setResults(data);
+      // Load from API (shared data)
+      const apiData = await FlankerResult.list("-created_date");
+      
+      // Also load from local storage for all task types
+      const flankerLocal = JSON.parse(localStorage.getItem('flankerResults') || '[]');
+      const stroopLocal = JSON.parse(localStorage.getItem('stroopResults') || '[]');
+      
+      // Add task_type to local data if missing
+      const flankerLocalWithType = flankerLocal.map(item => ({
+        ...item,
+        task_type: item.task_type || 'flanker'
+      }));
+      
+      const stroopLocalWithType = stroopLocal.map(item => ({
+        ...item, 
+        task_type: item.task_type || 'stroop'
+      }));
+      
+      // Combine API and local data, removing duplicates
+      const allData = [...apiData, ...flankerLocalWithType, ...stroopLocalWithType];
+      
+      // Remove duplicates based on timestamp and participant
+      const uniqueData = allData.filter((item, index, self) => 
+        index === self.findIndex(t => 
+          t.timestamp === item.timestamp && 
+          t.student_id === item.student_id &&
+          t.trial_number === item.trial_number
+        )
+      );
+      
+      setResults(uniqueData);
     } catch (error) {
       console.error("Error loading results:", error);
     }
     setLoading(false);
   };
 
+  const handleClearAllData = async () => {
+    if (!confirm('Are you sure you want to clear ALL data? This cannot be undone.')) {
+      return;
+    }
+    
+    setClearing(true);
+    try {
+      await clearAllTaskData();
+      await loadResults(); // Refresh the results
+    } catch (error) {
+      console.error('Error clearing data:', error);
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  // Determine what tasks are represented in the data
+  const taskTypes = [...new Set(results.map(r => r.task_type).filter(Boolean))];
+  const isMixed = taskTypes.length > 1;
+  const primaryTask = taskTypes.length === 1 ? taskTypes[0] : null;
+
+  const getResultsTitle = () => {
+    if (results.length === 0) return "Results Dashboard";
+    if (isMixed) return "Mixed task performance analysis";
+    if (primaryTask === 'flanker') return "Flanker task performance analysis";
+    if (primaryTask === 'stroop') return "Stroop task performance analysis";
+    return "Cognitive task performance analysis";
+  };
+
   const downloadAllResults = () => {
     if (results.length === 0) return;
 
     const headers = [
-      "student_name", "student_id", "trial_number", "stimulus_type", "stimulus_display",
+      "task_type", "student_name", "student_id", "trial_number", "stimulus_type", "stimulus_display",
       "correct_response", "participant_response", "reaction_time_ms", "is_correct", 
       "session_start_time", "date_completed"
     ];
@@ -38,6 +97,7 @@ export default function Results() {
     const csvContent = [
       headers.join(","),
       ...results.map(r => [
+        `"${r.task_type || 'flanker'}"`,
         `"${r.student_name}"`,
         `"${r.student_id}"`,
         r.trial_number,
@@ -45,10 +105,10 @@ export default function Results() {
         `"${r.stimulus_display}"`,
         r.correct_response,
         r.participant_response,
-        r.reaction_time,
+        r.reaction_time || r.reaction_time_ms,
         r.is_correct,
         r.session_start_time,
-        r.created_date
+        r.created_date || r.timestamp
       ].join(","))
     ].join("\n");
 
@@ -56,7 +116,7 @@ export default function Results() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `flanker_all_results_${Date.now()}.csv`;
+    a.download = `cognitive_tasks_results_${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -86,16 +146,27 @@ export default function Results() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Results Dashboard</h1>
-            <p className="text-slate-600 mt-1">Flanker task performance analysis</p>
+            <p className="text-slate-600 mt-1">{getResultsTitle()}</p>
           </div>
-          <Button
-            onClick={downloadAllResults}
-            disabled={results.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export All Data
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleClearAllData}
+              disabled={results.length === 0 || clearing}
+              variant="outline"
+              className="border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {clearing ? 'Clearing...' : 'Clear All Data'}
+            </Button>
+            <Button
+              onClick={downloadAllResults}
+              disabled={results.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export All Data
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -127,7 +198,6 @@ export default function Results() {
         ) : (
           <div className="space-y-8">
             <ResultsSummary results={results} participants={participants} />
-            <ResultsChart participants={participants} />
             <ParticipantTable participants={participants} />
           </div>
         )}

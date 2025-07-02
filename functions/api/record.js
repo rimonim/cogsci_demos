@@ -11,6 +11,18 @@ export async function onRequestPost({ request, env }) {
     const timestamp = new Date().toISOString();
     const key = `result_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
     
+    // Add task type if not specified
+    if (!data.task_type) {
+      // Infer task type from data structure
+      if (data.stimulus_type === 'congruent' || data.stimulus_type === 'incongruent') {
+        data.task_type = 'flanker';
+      } else if (data.word && data.color) {
+        data.task_type = 'stroop';
+      } else {
+        data.task_type = 'unknown';
+      }
+    }
+    
     // Store in KV with the key
     await env.RT_DB.put(key, JSON.stringify({
       ...data,
@@ -51,7 +63,7 @@ export async function onRequestGet({ env }) {
     const keys = await env.RT_DB.list({ prefix: 'result_' });
     
     if (keys.keys.length === 0) {
-      return new Response('student_name,student_id,trial_number,stimulus_type,stimulus_display,correct_response,participant_response,reaction_time_ms,is_correct,session_start_time,timestamp\n', {
+      return new Response('task_type,student_name,student_id,trial_number,stimulus_type,stimulus_display,correct_response,participant_response,reaction_time_ms,is_correct,session_start_time,timestamp\n', {
         headers: {
           'Content-Type': 'text/csv',
           'Content-Disposition': 'attachment; filename="cogsci_class_results.csv"',
@@ -73,10 +85,11 @@ export async function onRequestGet({ env }) {
     records.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     // Generate CSV
-    const csvHeader = 'student_name,student_id,trial_number,stimulus_type,stimulus_display,correct_response,participant_response,reaction_time_ms,is_correct,session_start_time,timestamp\n';
+    const csvHeader = 'task_type,student_name,student_id,trial_number,stimulus_type,stimulus_display,correct_response,participant_response,reaction_time_ms,is_correct,session_start_time,timestamp\n';
     
     const csvRows = records.map(record => {
       return [
+        record.task_type || '',
         record.student_name || '',
         record.student_id || '',
         record.trial_number || '',

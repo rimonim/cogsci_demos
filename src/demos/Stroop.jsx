@@ -39,7 +39,7 @@ const stimuli = [
 
 export default function StroopTask() {
   const [phase, setPhase] = useState("setup"); // setup, practice, practice_complete, task, complete
-  const [studentInfo, setStudentInfo] = useState({ name: "", id: "" });
+  const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
   const [currentTrial, setCurrentTrial] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [trialStartTime, setTrialStartTime] = useState(null);
@@ -99,7 +99,9 @@ export default function StroopTask() {
       reaction_time: reactionTime,
       is_correct: isCorrect,
       session_start_time: sessionStartTime,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      task_type: 'stroop',
+      share_data: studentInfo.shareData
     };
 
     if (phase === "practice") {
@@ -131,7 +133,9 @@ export default function StroopTask() {
         reaction_time: RESPONSE_TIMEOUT,
         is_correct: false,
         session_start_time: sessionStartTime,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        task_type: 'stroop',
+        share_data: studentInfo.shareData
       };
 
       if (phase === "practice") {
@@ -195,12 +199,22 @@ export default function StroopTask() {
   const handleTaskComplete = async () => {
     // Don't change phase yet, save data first
     try {
-      for (const result of results) {
-        await fetch('/api/record', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(result)
-        });
+      // Always store locally for individual results
+      const existingResults = JSON.parse(localStorage.getItem('stroopResults') || '[]');
+      localStorage.setItem('stroopResults', JSON.stringify([...existingResults, ...results]));
+
+      // Only send to API if user has opted to share
+      if (studentInfo.shareData) {
+        for (const result of results) {
+          await fetch('/api/record', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(result)
+          });
+        }
+        console.log('Data shared with class successfully');
+      } else {
+        console.log('Data kept private (not shared with class)');
       }
     } catch (error) {
       console.error('Error saving results:', error);

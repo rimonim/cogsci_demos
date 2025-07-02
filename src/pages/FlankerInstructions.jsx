@@ -1,10 +1,57 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, ArrowRight, Target } from 'lucide-react';
+import TaskSwitchDialog from '@/components/TaskSwitchDialog';
+import { detectExistingTaskData, clearAllTaskData } from '@/utils';
 
 export default function FlankerInstructions() {
+  const navigate = useNavigate();
+  const [showDialog, setShowDialog] = useState(false);
+  const [existingData, setExistingData] = useState(null);
+  const [checkingData, setCheckingData] = useState(false);
+
+  const checkForExistingData = async () => {
+    setCheckingData(true);
+    try {
+      const data = await detectExistingTaskData();
+      if (data.hasData) {
+        setExistingData(data);
+        setShowDialog(true);
+      } else {
+        // No existing data, proceed directly
+        navigate('/flanker/task');
+      }
+    } catch (error) {
+      console.error('Error checking existing data:', error);
+      // On error, proceed anyway
+      navigate('/flanker/task');
+    } finally {
+      setCheckingData(false);
+    }
+  };
+
+  const handleClearAndContinue = async () => {
+    try {
+      await clearAllTaskData();
+      setShowDialog(false);
+      navigate('/flanker/task');
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      // Proceed anyway
+      navigate('/flanker/task');
+    }
+  };
+
+  const handleContinueWithExisting = () => {
+    setShowDialog(false);
+    navigate('/flanker/task');
+  };
+
+  const handleCancel = () => {
+    setShowDialog(false);
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
       <div className="max-w-2xl mx-auto pt-8">
@@ -52,14 +99,28 @@ export default function FlankerInstructions() {
             </div>
 
             <div className="text-center pt-4">
-              <Link to="/flanker/task">
-                <Button className="w-full" size="lg">
-                  Start Practice Trials
-                </Button>
-              </Link>
+              <Button 
+                className="w-full" 
+                size="lg" 
+                onClick={checkForExistingData}
+                disabled={checkingData}
+              >
+                {checkingData ? 'Checking...' : 'Start Practice Trials'}
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {showDialog && (
+          <TaskSwitchDialog
+            currentTask="flanker"
+            existingTasks={existingData.tasks}
+            dataCount={existingData.count}
+            onClearAndContinue={handleClearAndContinue}
+            onContinueWithExisting={handleContinueWithExisting}
+            onCancel={handleCancel}
+          />
+        )}
       </div>
     </div>
   );

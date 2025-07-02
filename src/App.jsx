@@ -1,25 +1,38 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import Flanker from './demos/Flanker';
-import FlankerInstructions from './pages/FlankerInstructions';
-import Stroop from './demos/Stroop';
-import StroopInstructions from './pages/StroopInstructions';
-import Results from './pages/Results';
-import Instructions from './pages/Instructions';
 
-// Placeholder is no longer needed
+// Lazy load all page components for code splitting
+const Home = lazy(() => import('./pages/Home'));
+const FlankerDemo = lazy(() => import('./demos/Flanker'));
+const FlankerInstructions = lazy(() => import('./pages/FlankerInstructions'));
+const StroopDemo = lazy(() => import('./demos/Stroop'));
+const StroopInstructions = lazy(() => import('./pages/StroopInstructions'));
+const Results = lazy(() => import('./pages/Results'));
+const Instructions = lazy(() => import('./pages/Instructions'));
+
+// Loading component for better UX during chunk loading
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="text-slate-600 mt-4 text-sm">Loading...</p>
+    </div>
+  </div>
+);
+
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/flanker" element={<FlankerInstructions />} />
-      <Route path="/flanker/task" element={<Flanker />} />
-      <Route path="/stroop" element={<StroopInstructions />} />
-      <Route path="/stroop/task" element={<Stroop />} />
-      <Route path="/results" element={<Results />} />
-      <Route path="/instructions" element={<Instructions />} />
-    </Routes>
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/flanker" element={<FlankerInstructions />} />
+        <Route path="/flanker/task" element={<FlankerDemo />} />
+        <Route path="/stroop" element={<StroopInstructions />} />
+        <Route path="/stroop/task" element={<StroopDemo />} />
+        <Route path="/results" element={<Results />} />
+        <Route path="/instructions" element={<Instructions />} />
+      </Routes>
+    </Suspense>
   );
 }
 

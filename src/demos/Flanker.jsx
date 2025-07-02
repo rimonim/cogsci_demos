@@ -24,7 +24,7 @@ const stimuli = [
 
 export default function FlankerTask() {
   const [phase, setPhase] = useState("setup"); // setup, practice, practice_complete, task, complete
-  const [studentInfo, setStudentInfo] = useState({ name: "", id: "" });
+  const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
   const [currentTrial, setCurrentTrial] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [trialStartTime, setTrialStartTime] = useState(null);
@@ -80,10 +80,11 @@ export default function FlankerTask() {
         stimulus_type: currentStimulus.type, stimulus_display: currentStimulus.display,
         correct_response: currentStimulus.correct, participant_response: response,
         reaction_time: Math.round(actualRT), is_correct: isCorrect, session_start_time: sessionStartTime,
+        task_type: 'flanker', share_data: studentInfo.shareData
       };
       setTrialResults(prev => [...prev, result]);
       try {
-        await FlankerResult.create(result);
+        await FlankerResult.create(result, studentInfo.shareData);
       } catch (error) { console.error("Error saving result:", error); }
       setShowStimulus(false);
       if (currentTrial + 1 >= TOTAL_TRIALS) {
@@ -114,8 +115,8 @@ export default function FlankerTask() {
     }, 500);
   }, [currentTrial, trialSequence, phase, handleResponse]);
 
-  const startTask = (name, id) => {
-    setStudentInfo({ name, id });
+  const startTask = (name, id, shareData = false) => {
+    setStudentInfo({ name, id, shareData });
     setSessionStartTime(new Date().toISOString());
     setTrialSequence(generateTrials(PRACTICE_TRIALS));
     setCurrentTrial(0);
