@@ -1,6 +1,6 @@
 # Cognitive Science Demonstrations Platform
 
-A multi-demo cognitive psychology platform built with React and deployed on Cloudflare Pages with serverless Functions for data collection.
+A multi-demo cognitive psychology platform vibe-coded with React and deployed on Cloudflare Pages with serverless Functions for data collection.
 
 ## Features
 

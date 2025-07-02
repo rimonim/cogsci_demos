@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Flanker from './demos/Flanker';
+import FlankerInstructions from './pages/FlankerInstructions';
 import Results from './pages/Results';
 import Instructions from './pages/Instructions';
 
@@ -19,7 +20,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/flanker" element={<Flanker />} />
+      <Route path="/flanker" element={<FlankerInstructions />} />
+      <Route path="/flanker/task" element={<Flanker />} />
       <Route path="/stroop" element={<StroopPlaceholder />} />
       <Route path="/results" element={<Results />} />
       <Route path="/instructions" element={<Instructions />} />

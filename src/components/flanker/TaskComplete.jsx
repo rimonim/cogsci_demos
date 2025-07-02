@@ -153,17 +153,24 @@ export default function TaskComplete({ results, studentInfo }) {
         </Card>
 
         <div className="flex flex-wrap gap-4 justify-center">
+          <Link to="/">
+            <Button className="bg-blue-600 hover:bg-blue-700 font-semibold px-6">
+              <ArrowRight className="w-4 h-4 mr-2" />
+              Return to Home
+            </Button>
+          </Link>
+          
           <Button
             onClick={downloadCSV}
             variant="outline"
-            className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white font-semibold px-6"
+            className="bg-white border-slate-200 hover:bg-slate-50 font-semibold px-6"
           >
             <Download className="w-4 h-4 mr-2" />
-            Download My Data (CSV)
+            Download My Data
           </Button>
           
-          <Link to={createPageUrl("FlankerTask")}>
-            <Button variant="outline" className="bg-white/80 backdrop-blur-sm border-slate-200 hover:bg-white font-semibold px-6">
+          <Link to="/flanker">
+            <Button variant="outline" className="bg-white border-slate-200 hover:bg-slate-50 font-semibold px-6">
               <RotateCcw className="w-4 h-4 mr-2" />
               Take Task Again
             </Button>
