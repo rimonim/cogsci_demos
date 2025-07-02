@@ -1,0 +1,6 @@
+name = "cogsci-demos"
+compatibility_date = "2025-07-02"
+
+[[kv_namespaces]]
+binding = "RT_DB"
+id = "___"

@@ -1,7 +1,8 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Brain, BarChart3, Play, FileText } from "lucide-react";
+import { BarChart3, Play, FileText } from "lucide-react";
+import UniversityLogo from "@/components/UniversityLogo";
 import {
   Sidebar,
   SidebarContent,
@@ -40,11 +41,11 @@ export default function Layout({ children, currentPageName }) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-blue-50">
-        <Sidebar className="border-r border-slate-200/60 bg-white/80 backdrop-blur-sm">
-          <SidebarHeader className="border-b border-slate-200/60 p-6">
+        <Sidebar className="border-r border-slate-200 bg-white">
+          <SidebarHeader className="border-b border-slate-200 p-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Brain className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-xl">
+                <UniversityLogo className="w-full h-full" />
               </div>
               <div>
                 <h2 className="font-bold text-slate-900 text-lg">Flanker Task</h2>
@@ -66,7 +67,7 @@ export default function Layout({ children, currentPageName }) {
                         asChild 
                         className={`hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 rounded-lg font-medium ${
                           location.pathname === item.url 
-                            ? 'bg-blue-50 text-blue-700 shadow-sm' 
+                            ? 'bg-blue-50 text-blue-700' 
                             : 'text-slate-600'
                         }`}
                       >
@@ -84,7 +85,7 @@ export default function Layout({ children, currentPageName }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="bg-white/60 backdrop-blur-sm border-b border-slate-200/60 px-6 py-4 md:hidden">
+          <header className="bg-white border-b border-slate-200 px-6 py-4 md:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="hover:bg-slate-100 p-2 rounded-lg transition-colors duration-200" />
               <h1 className="text-xl font-bold text-slate-900">Flanker Task</h1>
