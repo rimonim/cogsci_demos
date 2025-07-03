@@ -7,10 +7,11 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
-import TaskSetup from "@/components/visual-search/TaskSetup";
+import TaskSetup from "@/components/ui/TaskSetup";
+import { VISUAL_SEARCH_CONFIG, VISUAL_SEARCH_PRACTICE_CONFIG, VISUAL_SEARCH_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
 import StimulusDisplay from "@/components/visual-search/StimulusDisplay";
-import TaskComplete from "@/components/visual-search/TaskComplete";
-import PracticeComplete from "@/components/visual-search/PracticeComplete";
+import TaskComplete from "@/components/ui/TaskComplete";
+import PracticeComplete from "@/components/ui/PracticeComplete";
 
 const TOTAL_TRIALS = 80; // 20 per condition (4 conditions)
 const PRACTICE_TRIALS = 12;
@@ -236,15 +237,15 @@ export default function VisualSearchTask() {
 
   // Render phases
   if (phase === "setup") {
-    return <TaskSetup onComplete={startTask} />;
+    return <TaskSetup onComplete={startTask} config={VISUAL_SEARCH_CONFIG} />;
   }
 
   if (phase === "practice_complete") {
-    return <PracticeComplete results={practiceResults} onContinue={startMainExperiment} />;
+    return <PracticeComplete results={practiceResults} onContinue={startMainExperiment} config={VISUAL_SEARCH_PRACTICE_CONFIG} />;
   }
 
   if (phase === "complete") {
-    return <TaskComplete results={results} onComplete={handleTaskComplete} />;
+    return <TaskComplete results={results} studentInfo={studentInfo} config={VISUAL_SEARCH_COMPLETE_CONFIG} />;
   }
 
   return (

@@ -7,10 +7,11 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
-import TaskSetup from "@/components/stroop/TaskSetup";
+import TaskSetup from "@/components/ui/TaskSetup";
+import { STROOP_CONFIG, STROOP_PRACTICE_CONFIG, STROOP_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
 import StimulusDisplay from "@/components/stroop/StimulusDisplay";
-import TaskComplete from "@/components/stroop/TaskComplete";
-import PracticeComplete from "@/components/stroop/PracticeComplete";
+import TaskComplete from "@/components/ui/TaskComplete";
+import PracticeComplete from "@/components/ui/PracticeComplete";
 
 const TOTAL_TRIALS = 40;
 const PRACTICE_TRIALS = 10;
@@ -158,15 +159,15 @@ export default function StroopTask() {
 
   // Render phases
   if (phase === "setup") {
-    return <TaskSetup onComplete={startTask} />;
+    return <TaskSetup onComplete={startTask} config={STROOP_CONFIG} />;
   }
 
   if (phase === "practice_complete") {
-    return <PracticeComplete results={practiceResults} onContinue={startMainExperiment} />;
+    return <PracticeComplete results={practiceResults} onContinue={startMainExperiment} config={STROOP_PRACTICE_CONFIG} />;
   }
 
   if (phase === "complete") {
-    return <TaskComplete results={results} studentInfo={studentInfo} />;
+    return <TaskComplete results={results} studentInfo={studentInfo} config={STROOP_COMPLETE_CONFIG} />;
   }
 
   return (

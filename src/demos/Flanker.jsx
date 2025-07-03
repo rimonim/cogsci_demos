@@ -7,10 +7,11 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
-import TaskSetup from "@/components/flanker/TaskSetup";
+import TaskSetup from "@/components/ui/TaskSetup";
+import { FLANKER_CONFIG, FLANKER_PRACTICE_CONFIG, FLANKER_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
 import StimulusDisplay from "@/components/flanker/StimulusDisplay";
-import TaskComplete from "@/components/flanker/TaskComplete";
-import PracticeComplete from "@/components/flanker/PracticeComplete";
+import TaskComplete from "@/components/ui/TaskComplete";
+import PracticeComplete from "@/components/ui/PracticeComplete";
 
 const TOTAL_TRIALS = 40;
 const PRACTICE_TRIALS = 10;
@@ -157,15 +158,15 @@ export default function FlankerTask() {
 
   // Render phases
   if (phase === "setup") {
-    return <TaskSetup onStart={startTask} />;
+    return <TaskSetup onStart={startTask} config={FLANKER_CONFIG} />;
   }
 
   if (phase === "practice_complete") {
-    return <PracticeComplete onStartExperiment={startMainExperiment} />;
+    return <PracticeComplete onStartExperiment={startMainExperiment} config={FLANKER_PRACTICE_CONFIG} />;
   }
 
   if (phase === "complete") {
-    return <TaskComplete results={results} studentInfo={studentInfo} />;
+    return <TaskComplete results={results} studentInfo={studentInfo} config={FLANKER_COMPLETE_CONFIG} />;
   }
 
   const progressTitle = phase === 'practice' ? 'Practice Trial' : 'Trial';
