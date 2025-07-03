@@ -1,5 +1,5 @@
 // Task configurations for the unified TaskSetup component
-import { Play, Eye, Search } from "lucide-react";
+import { Play, Eye, Search, Brain } from "lucide-react";
 
 export const FLANKER_CONFIG = {
   taskName: "Flanker Task Setup",
@@ -45,6 +45,25 @@ export const VISUAL_SEARCH_CONFIG = {
   showInstructions: true,
   gradientFrom: "from-slate-50",
   gradientTo: "to-purple-50"
+};
+
+export const NBACK_CONFIG = {
+  taskName: "N-Back Task",
+  theme: "indigo",
+  icon: <Brain className="w-6 h-6" />,
+  description: "Test your working memory with this n-back challenge",
+  instructions: [
+    "Watch the sequence of letters appearing on the screen",
+    "Press SPACE when the current letter matches the one from 2 positions back",
+    "Try to be both fast and accurate - it's challenging!"
+  ],
+  keyBindings: [
+    { key: "SPACE", description: "when letter matches 2-back" }
+  ],
+  buttonText: "Start Practice Trials",
+  showInstructions: true,
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50"
 };
 
 // PracticeComplete configurations
@@ -100,6 +119,27 @@ export const VISUAL_SEARCH_PRACTICE_CONFIG = {
   gradientTo: "to-purple-50",
   accuracyWarningThreshold: 70,
   lowAccuracyMessage: "Your accuracy was a bit low. Remember to look carefully for the target before responding. Don't worry - the main task will give you more practice!"
+};
+
+export const NBACK_PRACTICE_CONFIG = {
+  taskName: "N-Back Task",
+  theme: "indigo",
+  title: "Practice Complete!",
+  description: "Great job! Here's how you performed in the practice trials.",
+  buttonText: "Continue to Main Task",
+  showStats: true,
+  reminders: [
+    "Remember: press SPACE when the current letter matches 2 positions back",
+    "Don't worry about missed targets - this task is very challenging",
+    "Focus on accuracy first, speed will come with practice"
+  ],
+  keyBindings: [
+    { key: "SPACE", description: "when letter matches 2-back" }
+  ],
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50",
+  accuracyWarningThreshold: 60,
+  lowAccuracyMessage: "The n-back task is very challenging - don't worry if your accuracy was low! Focus on identifying when the current letter is the same as 2 trials back."
 };
 
 // TaskComplete configurations
@@ -242,5 +282,47 @@ export const VISUAL_SEARCH_COMPLETE_CONFIG = {
     "Student Name", "Student ID", "Trial", "Condition", "Set Size", "Target Present",
     "Search Type", "Correct Response", "Participant Response", "Reaction Time (ms)", 
     "Correct", "Session Start"
+  ]
+};
+
+export const NBACK_COMPLETE_CONFIG = {
+  taskName: "N-Back Task",
+  theme: "indigo",
+  title: "N-Back Task Complete!",
+  description: "Thank you for participating! Here are your results:",
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50",
+  showDetailedStats: true,
+  calculateCustomStats: (results) => {
+    const targetTrials = results.filter(r => r.is_target === true);
+    const nonTargetTrials = results.filter(r => r.is_target === false);
+    
+    // Calculate hits, misses, false alarms, correct rejections
+    const hits = targetTrials.filter(r => r.participant_response === "match").length;
+    const misses = targetTrials.filter(r => r.participant_response !== "match").length;
+    const falseAlarms = nonTargetTrials.filter(r => r.participant_response === "match").length;
+    const correctRejections = nonTargetTrials.filter(r => r.participant_response !== "match").length;
+    
+    // Calculate accuracy
+    const totalCorrect = hits + correctRejections;
+    const accuracy = (totalCorrect / results.length) * 100;
+    
+    // Response times for hits only
+    const hitTrials = targetTrials.filter(r => r.participant_response === "match" && r.reaction_time > 0);
+    const avgHitRT = hitTrials.length > 0 
+      ? hitTrials.reduce((sum, r) => sum + r.reaction_time, 0) / hitTrials.length 
+      : 0;
+
+    // Simplified stats that show as integers (explicitly cast to integers to avoid decimal display)
+    return {
+      hits: parseInt(hits, 10),
+      misses: parseInt(misses, 10),
+      false_alarms: parseInt(falseAlarms, 10),
+      correct_rejections: parseInt(correctRejections, 10)
+    };
+  },
+  downloadFields: [
+    "Student Name", "Student ID", "Trial", "Letter", "Is Target", "N-Back Level",
+    "Correct Response", "Participant Response", "Reaction Time (ms)", "Correct", "Session Start"
   ]
 };

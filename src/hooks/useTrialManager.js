@@ -11,6 +11,7 @@ export function useTrialManager({
   interTrialDelay = 500,
   fixationDelay = 500,
   showFixation = true,
+  stimulusDuration = null, // Duration to show stimulus before blanking (but still allowing responses)
   onTrialStart,
   onTrialEnd,
   onPhaseComplete,
@@ -103,6 +104,16 @@ export function useTrialManager({
         setShowStimulus(true);
         setAwaitingResponse(true);
 
+        // If stimulusDuration is set, hide stimulus after that time (but continue to accept responses)
+        if (stimulusDuration) {
+          const hideStimTimeout = setTimeout(() => {
+            // Only hide the stimulus, keep accepting responses
+            setShowStimulus(false);
+          }, stimulusDuration);
+          
+          timeoutsRef.current.push(hideStimTimeout);
+        }
+
         // Response timeout
         const responseTimeoutId = setTimeout(() => {
           if (awaitingResponseRef.current) {
@@ -120,6 +131,16 @@ export function useTrialManager({
       setTrialStartTime(Date.now());
       setShowStimulus(true);
       setAwaitingResponse(true);
+      
+      // If stimulusDuration is set, hide stimulus after that time (but continue to accept responses)
+      if (stimulusDuration) {
+        const hideStimTimeout = setTimeout(() => {
+          // Only hide the stimulus, keep accepting responses
+          setShowStimulus(false);
+        }, stimulusDuration);
+        
+        timeoutsRef.current.push(hideStimTimeout);
+      }
 
       // Response timeout
       const responseTimeoutId = setTimeout(() => {

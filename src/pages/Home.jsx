@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail } from '@/components/Thumbnails';
+import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail, NBackThumbnail } from '@/components/Thumbnails';
 import UniversityLogo from '@/components/UniversityLogo';
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8 max-w-6xl mx-auto">
           <Card className="bg-white border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 overflow-hidden">
             <CardContent className="p-0">
               <div className="aspect-video sm:aspect-[4/3] lg:aspect-square xl:aspect-video">
@@ -33,7 +33,7 @@ export default function Home() {
                 <CardTitle className="text-lg lg:text-xl mb-3">Flanker</CardTitle>
                 <Link to="/flanker">
                   <Button className="w-full">
-                    Start Flanker Task
+                    Start Flanker
                   </Button>
                 </Link>
               </div>
@@ -49,7 +49,7 @@ export default function Home() {
                 <CardTitle className="text-lg lg:text-xl mb-3">Stroop</CardTitle>
                 <Link to="/stroop">
                   <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                    Start Stroop Task
+                    Start Stroop
                   </Button>
                 </Link>
               </div>
@@ -65,7 +65,23 @@ export default function Home() {
                 <CardTitle className="text-lg lg:text-xl mb-3">Visual Search</CardTitle>
                 <Link to="/visual-search">
                   <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                    Start Visual Search Task
+                    Start Visual Search
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-video sm:aspect-[4/3] lg:aspect-square xl:aspect-video">
+                <NBackThumbnail className="w-full h-full" />
+              </div>
+              <div className="p-4 lg:p-6">
+                <CardTitle className="text-lg lg:text-xl mb-3">N-Back</CardTitle>
+                <Link to="/nback">
+                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
+                    Start N-Back
                   </Button>
                 </Link>
               </div>

@@ -167,7 +167,11 @@ export default function TaskComplete({ results, studentInfo, config }) {
                   {Object.entries(customStats).map(([key, value]) => (
                     <div key={key} className="bg-slate-50 rounded-lg p-4">
                       <div className="text-xl font-bold text-slate-800">
-                        {typeof value === 'number' ? value.toFixed(value > 10 ? 0 : 1) : value}
+                        {typeof value === 'number' ? 
+                          (key.includes('hits') || key.includes('misses') || key.includes('alarms') || key.includes('rejections') ? 
+                            Math.round(value) : 
+                            value.toFixed(value > 10 ? 0 : 1)) 
+                          : value}
                         {typeof value === 'number' && key.toLowerCase().includes('time') ? 'ms' : ''}
                         {typeof value === 'number' && key.toLowerCase().includes('accuracy') ? '%' : ''}
                       </div>

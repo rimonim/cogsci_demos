@@ -49,11 +49,16 @@ export const StroopThumbnail = ({ className = "" }) => {
       <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center h-full">
         {/* Stroop stimulus */}
         <div className="bg-white rounded-xl p-6 sm:p-8 lg:p-10 w-full max-w-[280px] flex items-center justify-center border border-slate-200 shadow-sm">
-          <div 
-            className="text-3xl sm:text-4xl lg:text-5xl font-bold select-none transition-all duration-300"
-            style={{ color: stroopItems[currentWord].color }}
-          >
-            {stroopItems[currentWord].word}
+          <div className="flex justify-center items-center w-full">
+            <div 
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold select-none transition-all duration-300 text-center"
+              style={{ 
+                color: stroopItems[currentWord].color,
+                display: 'inline-block'
+              }}
+            >
+              {stroopItems[currentWord].word}
+            </div>
           </div>
         </div>
       </div>
@@ -112,6 +117,44 @@ export const VisualSearchThumbnail = ({ className = "" }) => {
                 />
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const NBackThumbnail = ({ className = "" }) => {
+  const [showLetter, setShowLetter] = useState(true);
+  const [currentLetter, setCurrentLetter] = useState(0);
+  
+  // Letters to cycle through - same smaller set as the task
+  const letters = ['F', 'H', 'K', 'L'];
+  
+  useEffect(() => {
+    // Toggle between showing letter and blank screen
+    const blinkInterval = setInterval(() => {
+      setShowLetter(prev => !prev);
+    }, 1000); // 1000ms on, 1000ms off (slower)
+    
+    // Change letter every full cycle
+    const letterInterval = setInterval(() => {
+      setCurrentLetter(prev => (prev + 1) % letters.length);
+    }, 6000); // Change letter every 6 seconds (slower)
+    
+    return () => {
+      clearInterval(blinkInterval);
+      clearInterval(letterInterval);
+    };
+  }, []);
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg overflow-hidden relative ${className}`}>
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center h-full">
+        {/* Letter display */}
+        <div className="bg-black rounded-xl p-6 sm:p-8 lg:p-10 w-full max-w-[280px] flex items-center justify-center border border-slate-200 shadow-sm min-h-[120px]">
+          <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white font-mono transition-all duration-200 h-[60px] flex items-center justify-center">
+            {showLetter ? letters[currentLetter] : ' '}
           </div>
         </div>
       </div>

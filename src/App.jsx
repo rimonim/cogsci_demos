@@ -9,6 +9,8 @@ const StroopDemo = lazy(() => import('./demos/Stroop'));
 const StroopInstructions = lazy(() => import('./pages/StroopInstructions'));
 const VisualSearchDemo = lazy(() => import('./demos/VisualSearch'));
 const VisualSearchInstructions = lazy(() => import('./pages/VisualSearchInstructions'));
+const NBackDemo = lazy(() => import('./demos/NBack'));
+const NBackInstructions = lazy(() => import('./pages/NBackInstructions'));
 const Results = lazy(() => import('./pages/Results'));
 const Instructions = lazy(() => import('./pages/Instructions'));
 
@@ -33,6 +35,8 @@ function App() {
         <Route path="/stroop/task" element={<StroopDemo />} />
         <Route path="/visual-search" element={<VisualSearchInstructions />} />
         <Route path="/visual-search/task" element={<VisualSearchDemo />} />
+        <Route path="/nback" element={<NBackInstructions />} />
+        <Route path="/nback/task" element={<NBackDemo />} />
         <Route path="/results" element={<Results />} />
         <Route path="/instructions" element={<Instructions />} />
       </Routes>
