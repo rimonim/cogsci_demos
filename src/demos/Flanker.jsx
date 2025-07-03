@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTrialManager } from "@/hooks/useTrialManager";
 
 import TaskSetup from "@/components/flanker/TaskSetup";
 import StimulusDisplay from "@/components/flanker/StimulusDisplay";
@@ -23,21 +24,14 @@ const stimuli = [
 ];
 
 export default function FlankerTask() {
-  const [phase, setPhase] = useState("setup"); // setup, practice, practice_complete, task, complete
   const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
-  const [currentTrial, setCurrentTrial] = useState(0);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [trialStartTime, setTrialStartTime] = useState(null);
   const [currentStimulus, setCurrentStimulus] = useState(null);
-  const [showStimulus, setShowStimulus] = useState(false);
-  const [awaitingResponse, setAwaitingResponse] = useState(false);
-  const [trialResults, setTrialResults] = useState([]);
-  const [trialSequence, setTrialSequence] = useState([]);
   const [feedback, setFeedback] = useState(null);
-  
-  const responseGivenRef = React.useRef(false);
-  const timeoutIdRef = React.useRef(null);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
 
+  const navigate = useNavigate();
+
+  // Generate trial sequences
   const generateTrials = useCallback((numTrials) => {
     const trials = [];
     const congruentCount = Math.ceil(numTrials / 2);
@@ -53,108 +47,127 @@ export default function FlankerTask() {
     return trials.slice(0, numTrials);
   }, []);
 
-  const handleResponse = useCallback(async (response, reactionTime) => {
-    if (responseGivenRef.current || !currentStimulus) return;
-    
-    responseGivenRef.current = true;
-    setAwaitingResponse(false);
-    clearTimeout(timeoutIdRef.current);
+  const practiceTrials = generateTrials(PRACTICE_TRIALS);
+  const mainTrials = generateTrials(TOTAL_TRIALS);
 
-    const isCorrect = response === currentStimulus.correct;
+  const {
+    phase,
+    currentTrial,
+    showStimulus,
+    showingFixation,
+    awaitingResponse,
+    inInterTrialDelay,
+    results,
+    practiceResults,
+    startPractice,
+    startMainTask,
+    handleResponse,
+    getCurrentTrial,
+    totalTrials
+  } = useTrialManager({
+    practiceTrials,
+    mainTrials,
+    responseTimeout: RESPONSE_TIMEOUT,
+    interTrialDelay: { practice: 1200, task: 500 }, // Longer delay for practice to show feedback
+    fixationDelay: 500,
+    showFixation: false, // Flanker doesn't use fixation crosses
     
-    if (phase === 'practice') {
-      const feedbackText = response === 'timeout' ? 'Too Slow' : (isCorrect ? 'Correct!' : 'Incorrect');
-      setFeedback({ show: true, text: feedbackText, correct: isCorrect });
-
-      setTimeout(() => {
-        if (currentTrial + 1 >= PRACTICE_TRIALS) {
-          setPhase("practice_complete");
-        } else {
-          setCurrentTrial(prev => prev + 1);
-        }
-      }, 800);
-    } else { // 'task' phase
-      const actualRT = reactionTime || (performance.now() - trialStartTime);
-      const result = {
-        student_name: studentInfo.name, student_id: studentInfo.id, trial_number: currentTrial + 1,
-        stimulus_type: currentStimulus.type, stimulus_display: currentStimulus.display,
-        correct_response: currentStimulus.correct, participant_response: response,
-        reaction_time: Math.round(actualRT), is_correct: isCorrect, session_start_time: sessionStartTime,
-        task_type: 'flanker', share_data: studentInfo.shareData
+    onTrialStart: (trial, trialIndex, currentPhase) => {
+      setCurrentStimulus(trial);
+      setFeedback(null);
+    },
+    
+    onTrialEnd: (result, trial, trialIndex, currentPhase) => {
+      const isCorrect = result.response === trial.correct;
+      
+      // Enhanced result object
+      const enhancedResult = {
+        ...result,
+        student_name: studentInfo.name,
+        student_id: studentInfo.id,
+        stimulus_type: trial.type,
+        stimulus_display: trial.display,
+        correct_response: trial.correct,
+        participant_response: result.response,
+        is_correct: isCorrect,
+        session_start_time: sessionStartTime,
+        task_type: 'flanker',
+        share_data: studentInfo.shareData
       };
-      setTrialResults(prev => [...prev, result]);
-      try {
-        await FlankerResult.create(result, studentInfo.shareData);
-      } catch (error) { console.error("Error saving result:", error); }
-      setShowStimulus(false);
-      if (currentTrial + 1 >= TOTAL_TRIALS) {
-        setTimeout(() => setPhase("complete"), 500);
-      } else {
-        setTimeout(() => setCurrentTrial(prev => prev + 1), 200);
+
+      // Show feedback for practice trials
+      if (currentPhase === 'practice') {
+        const feedbackText = result.response === 'timeout' ? 'Too Slow' : (isCorrect ? 'Correct!' : 'Incorrect');
+        setFeedback({ show: true, text: feedbackText, correct: isCorrect });
       }
+
+      // Save to API for main task
+      if (currentPhase === 'task') {
+        try {
+          FlankerResult.create(enhancedResult, studentInfo.shareData);
+        } catch (error) {
+          console.error("Error saving result:", error);
+        }
+      }
+
+      return enhancedResult;
+    },
+    
+    onPhaseComplete: (completedPhase, phaseResults) => {
+      console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
+    },
+    
+    onExperimentComplete: (mainResults, practiceResults) => {
+      console.log('Flanker experiment completed!', { mainResults, practiceResults });
     }
-  }, [phase, currentStimulus, trialStartTime, studentInfo, currentTrial, sessionStartTime]);
+  });
 
-  const startTrial = useCallback(() => {
-    const trialsInPhase = phase === 'practice' ? PRACTICE_TRIALS : TOTAL_TRIALS;
-    if (currentTrial >= trialsInPhase) return;
-    
-    responseGivenRef.current = false;
-    setFeedback(null);
-    clearTimeout(timeoutIdRef.current);
-
-    const stimulus = trialSequence[currentTrial];
-    setCurrentStimulus(stimulus);
-    setShowStimulus(false);
-    
-    setTimeout(() => {
-      setShowStimulus(true);
-      setTrialStartTime(performance.now());
-      setAwaitingResponse(true);
-      timeoutIdRef.current = setTimeout(() => handleResponse("timeout", RESPONSE_TIMEOUT), RESPONSE_TIMEOUT);
-    }, 500);
-  }, [currentTrial, trialSequence, phase, handleResponse]);
-
-  const startTask = (name, id, shareData = false) => {
-    setStudentInfo({ name, id, shareData });
-    setSessionStartTime(new Date().toISOString());
-    setTrialSequence(generateTrials(PRACTICE_TRIALS));
-    setCurrentTrial(0);
-    setPhase("practice");
-  };
-
-  const startMainExperiment = () => {
-    setPhase('task');
-    setCurrentTrial(0);
-    setTrialSequence(generateTrials(TOTAL_TRIALS));
-    setFeedback(null);
-  };
-
+  // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (!awaitingResponse) return;
-      if (e.key === "ArrowLeft") handleResponse("left");
-      else if (e.key === "ArrowRight") handleResponse("right");
+      
+      let response = null;
+      if (e.key === "ArrowLeft") response = "left";
+      else if (e.key === "ArrowRight") response = "right";
+      
+      if (response) {
+        handleResponse(response, Date.now());
+      }
     };
+    
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [awaitingResponse, handleResponse]);
 
-  useEffect(() => {
-    if ((phase === 'task' || phase === 'practice') && trialSequence.length > 0) {
-      const delay = currentTrial === 0 ? 1000 : 800;
-      const timerId = setTimeout(startTrial, delay);
-      return () => clearTimeout(timerId);
-    }
-  }, [phase, currentTrial, trialSequence, startTrial]);
+  // Setup handlers
+  const startTask = (name, id, shareData = false) => {
+    setStudentInfo({ name, id, shareData });
+    setSessionStartTime(new Date().toISOString());
+    startPractice();
+  };
 
-  useEffect(() => () => clearTimeout(timeoutIdRef.current), []);
+  const startMainExperiment = () => {
+    startMainTask();
+  };
 
-  if (phase === "setup") return <TaskSetup onStart={startTask} />;
-  if (phase === "practice_complete") return <PracticeComplete onStartExperiment={startMainExperiment} />;
-  if (phase === "complete") return <TaskComplete results={trialResults} studentInfo={studentInfo} />;
+  const handleTaskComplete = () => {
+    navigate('/');
+  };
 
-  const trialsForProgress = phase === 'practice' ? PRACTICE_TRIALS : TOTAL_TRIALS;
+  // Render phases
+  if (phase === "setup") {
+    return <TaskSetup onStart={startTask} />;
+  }
+
+  if (phase === "practice_complete") {
+    return <PracticeComplete onStartExperiment={startMainExperiment} />;
+  }
+
+  if (phase === "complete") {
+    return <TaskComplete results={results} studentInfo={studentInfo} />;
+  }
+
   const progressTitle = phase === 'practice' ? 'Practice Trial' : 'Trial';
 
   return (
@@ -168,12 +181,13 @@ export default function FlankerTask() {
                 <span className="font-medium text-slate-900">{studentInfo.name}</span>
               </div>
               <div className="text-sm text-slate-600">
-                {progressTitle} {currentTrial + 1} of {trialsForProgress}
+                {progressTitle} {currentTrial + 1} of {totalTrials}
               </div>
             </div>
-            <Progress value={((currentTrial + 1) / trialsForProgress) * 100} className="h-2" />
+            <Progress value={((currentTrial + 1) / totalTrials) * 100} className="h-2" />
           </CardContent>
         </Card>
+        
         <Card className="bg-white/90 backdrop-blur-sm border-slate-200/60 shadow-2xl">
           <CardContent className="p-6">
             <StimulusDisplay
@@ -184,6 +198,7 @@ export default function FlankerTask() {
             />
           </CardContent>
         </Card>
+        
         <div className="mt-6 text-center">
           <div className="inline-flex items-center gap-6 bg-white/80 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg">
             <div className="flex items-center gap-2 text-sm text-slate-600">

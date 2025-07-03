@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { StroopResult } from "@/entities/StroopResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTrialManager } from "@/hooks/useTrialManager";
 
 import TaskSetup from "@/components/stroop/TaskSetup";
 import StimulusDisplay from "@/components/stroop/StimulusDisplay";
@@ -38,229 +40,134 @@ const stimuli = [
 ];
 
 export default function StroopTask() {
-  const [phase, setPhase] = useState("setup"); // setup, practice, practice_complete, task, complete
   const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
-  const [currentTrial, setCurrentTrial] = useState(0);
-  const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [trialStartTime, setTrialStartTime] = useState(null);
   const [currentStimulus, setCurrentStimulus] = useState(null);
-  const [practiceResults, setPracticeResults] = useState([]);
-  const [results, setResults] = useState([]);
-  const [trialSequence, setTrialSequence] = useState([]);
-  const [practiceSequence, setPracticeSequence] = useState([]);
-  const [showStimulus, setShowStimulus] = useState(false);
-  const [interTrialDelay, setInterTrialDelay] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
 
   const navigate = useNavigate();
 
-  // Generate randomized trial sequences
-  const generateTrialSequence = useCallback((numTrials) => {
-    const sequence = [];
+  // Generate trial sequences
+  const generateTrials = useCallback((numTrials) => {
+    const trials = [];
     for (let i = 0; i < numTrials; i++) {
-      sequence.push(stimuli[Math.floor(Math.random() * stimuli.length)]);
+      trials.push(stimuli[Math.floor(Math.random() * stimuli.length)]);
     }
-    return sequence;
+    return trials;
   }, []);
 
-  useEffect(() => {
-    if (phase === "practice") {
-      setPracticeSequence(generateTrialSequence(PRACTICE_TRIALS));
-      setCurrentTrial(0);
-    } else if (phase === "task") {
-      setTrialSequence(generateTrialSequence(TOTAL_TRIALS));
-      setCurrentTrial(0);
-    }
-  }, [phase, generateTrialSequence]);
+  const practiceTrials = generateTrials(PRACTICE_TRIALS);
+  const mainTrials = generateTrials(TOTAL_TRIALS);
 
-  // Handle keyboard responses
-  const handleKeyPress = useCallback((event) => {
-    if (phase !== "practice" && phase !== "task") return;
-    if (!showStimulus || interTrialDelay) return;
-
-    const key = event.key.toLowerCase();
-    const validKeys = ['b', 'r', 'g', 'y'];
+  const {
+    phase,
+    currentTrial,
+    showStimulus,
+    showingFixation,
+    awaitingResponse,
+    inInterTrialDelay,
+    results,
+    practiceResults,
+    startPractice,
+    startMainTask,
+    handleResponse,
+    getCurrentTrial,
+    totalTrials
+  } = useTrialManager({
+    practiceTrials,
+    mainTrials,
+    responseTimeout: RESPONSE_TIMEOUT,
+    interTrialDelay: { practice: 1000, task: 800 }, // Slightly longer delays for Stroop
+    fixationDelay: 800, // Base fixation time (original used 500 + random(1000))
+    showFixation: true, // Stroop uses fixation crosses
     
-    if (!validKeys.includes(key)) return;
-
-    const reactionTime = Date.now() - trialStartTime;
-    const currentSequence = phase === "practice" ? practiceSequence : trialSequence;
-    const stimulus = currentSequence[currentTrial];
-    const isCorrect = key === stimulus.correct;
-
-    const trialData = {
-      student_name: studentInfo.name,
-      student_id: studentInfo.id,
-      trial_number: currentTrial + 1,
-      stimulus_type: stimulus.type,
-      stimulus_word: stimulus.word,
-      stimulus_color: stimulus.color,
-      correct_response: stimulus.correct,
-      participant_response: key,
-      reaction_time: reactionTime,
-      is_correct: isCorrect,
-      session_start_time: sessionStartTime,
-      timestamp: new Date().toISOString(),
-      task_type: 'stroop',
-      share_data: studentInfo.shareData
-    };
-
-    if (phase === "practice") {
-      setPracticeResults(prev => [...prev, trialData]);
-    } else {
-      setResults(prev => [...prev, trialData]);
-    }
-
-    nextTrial();
-  }, [phase, showStimulus, interTrialDelay, trialStartTime, currentTrial, practiceSequence, trialSequence, studentInfo, sessionStartTime]);
-
-  // Handle timeouts
-  useEffect(() => {
-    if (!showStimulus || interTrialDelay) return;
-
-    const timeoutId = setTimeout(() => {
-      const currentSequence = phase === "practice" ? practiceSequence : trialSequence;
-      const stimulus = currentSequence[currentTrial];
-
-      const trialData = {
+    onTrialStart: (trial, trialIndex, currentPhase) => {
+      setCurrentStimulus(trial);
+    },
+    
+    onTrialEnd: (result, trial, trialIndex, currentPhase) => {
+      const isCorrect = result.response === trial.correct;
+      
+      // Enhanced result object
+      const enhancedResult = {
+        ...result,
         student_name: studentInfo.name,
         student_id: studentInfo.id,
-        trial_number: currentTrial + 1,
-        stimulus_type: stimulus.type,
-        stimulus_word: stimulus.word,
-        stimulus_color: stimulus.color,
-        correct_response: stimulus.correct,
-        participant_response: "timeout",
-        reaction_time: RESPONSE_TIMEOUT,
-        is_correct: false,
+        stimulus_type: trial.type,
+        stimulus_word: trial.word,
+        stimulus_color: trial.color,
+        correct_response: trial.correct,
+        participant_response: result.response,
+        is_correct: isCorrect,
         session_start_time: sessionStartTime,
-        timestamp: new Date().toISOString(),
         task_type: 'stroop',
         share_data: studentInfo.shareData
       };
 
-      if (phase === "practice") {
-        setPracticeResults(prev => [...prev, trialData]);
-      } else {
-        setResults(prev => [...prev, trialData]);
-      }
-
-      nextTrial();
-    }, RESPONSE_TIMEOUT);
-
-    return () => clearTimeout(timeoutId);
-  }, [showStimulus, interTrialDelay, phase, currentTrial, practiceSequence, trialSequence, studentInfo, sessionStartTime]);
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [handleKeyPress]);
-
-  const nextTrial = () => {
-    setShowStimulus(false);
-    setInterTrialDelay(true);
-
-    setTimeout(() => {
-      const maxTrials = phase === "practice" ? PRACTICE_TRIALS : TOTAL_TRIALS;
-      
-      if (currentTrial + 1 >= maxTrials) {
-        if (phase === "practice") {
-          setPhase("practice_complete");
-        } else {
-          handleTaskComplete();
+      // Save to API for main task
+      if (currentPhase === 'task') {
+        try {
+          StroopResult.create(enhancedResult, studentInfo.shareData);
+        } catch (error) {
+          console.error("Error saving result:", error);
         }
-      } else {
-        setCurrentTrial(prev => prev + 1);
-        setInterTrialDelay(false);
-        startTrial();
       }
-    }, 1000);
-  };
 
-  const startTrial = () => {
-    setTimeout(() => {
-      setTrialStartTime(Date.now());
-      setShowStimulus(true);
-    }, 500 + Math.random() * 1000);
-  };
+      return enhancedResult;
+    },
+    
+    onPhaseComplete: (completedPhase, phaseResults) => {
+      console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
+    },
+    
+    onExperimentComplete: (mainResults, practiceResults) => {
+      console.log('Stroop experiment completed!', { mainResults, practiceResults });
+    }
+  });
 
-  const handleSetupComplete = (info) => {
+  // Handle keyboard input
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (!awaitingResponse) return;
+      
+      const key = e.key.toLowerCase();
+      const validKeys = ['b', 'r', 'g', 'y'];
+      
+      if (validKeys.includes(key)) {
+        handleResponse(key, Date.now());
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [awaitingResponse, handleResponse]);
+
+  // Setup handlers
+  const startTask = (info) => {
     setStudentInfo(info);
     setSessionStartTime(new Date().toISOString());
-    setPhase("practice");
+    startPractice();
   };
 
-  const handlePracticeComplete = () => {
-    setCurrentTrial(0); // Reset trial counter for main task
-    setShowStimulus(false); // Reset stimulus display
-    setInterTrialDelay(false); // Reset delay state
-    setPhase("task");
+  const startMainExperiment = () => {
+    startMainTask();
   };
 
-  const handleTaskComplete = async () => {
-    // Don't change phase yet, save data first
-    try {
-      // Always store locally for individual results
-      const existingResults = JSON.parse(localStorage.getItem('stroopResults') || '[]');
-      localStorage.setItem('stroopResults', JSON.stringify([...existingResults, ...results]));
-
-      // Only send to API if user has opted to share
-      if (studentInfo.shareData) {
-        for (const result of results) {
-          await fetch('/api/record', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(result)
-          });
-        }
-        console.log('Data shared with class successfully');
-      } else {
-        console.log('Data kept private (not shared with class)');
-      }
-    } catch (error) {
-      console.error('Error saving results:', error);
-      // Fallback to localStorage
-      const existingResults = JSON.parse(localStorage.getItem('stroopResults') || '[]');
-      localStorage.setItem('stroopResults', JSON.stringify([...existingResults, ...results]));
-    }
-    // Now change phase
-    setPhase("complete");
+  const handleTaskComplete = () => {
+    navigate('/');
   };
 
-  // Start first trial when practice or task begins
-  useEffect(() => {
-    if ((phase === "practice" && practiceSequence.length > 0) || 
-        (phase === "task" && trialSequence.length > 0)) {
-      startTrial();
-    }
-  }, [phase, practiceSequence.length, trialSequence.length]);
-
-  // Set current stimulus
-  useEffect(() => {
-    const currentSequence = phase === "practice" ? practiceSequence : trialSequence;
-    if (currentSequence.length > 0 && currentTrial < currentSequence.length) {
-      setCurrentStimulus(currentSequence[currentTrial]);
-    }
-  }, [phase, currentTrial, practiceSequence, trialSequence]);
-
+  // Render phases
   if (phase === "setup") {
-    return <TaskSetup onComplete={handleSetupComplete} />;
+    return <TaskSetup onComplete={startTask} />;
   }
 
   if (phase === "practice_complete") {
-    return (
-      <PracticeComplete 
-        results={practiceResults} 
-        onContinue={handlePracticeComplete}
-      />
-    );
+    return <PracticeComplete results={practiceResults} onContinue={startMainExperiment} />;
   }
 
   if (phase === "complete") {
     return <TaskComplete results={results} studentInfo={studentInfo} />;
   }
-
-  const totalTrials = phase === "practice" ? PRACTICE_TRIALS : TOTAL_TRIALS;
-  const progressPercentage = ((currentTrial + 1) / totalTrials) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 flex flex-col">
@@ -281,7 +188,7 @@ export default function StroopTask() {
               {phase === "practice" ? "Practice" : "Task"} Trial {currentTrial + 1} of {totalTrials}
             </p>
             <div className="w-48 mt-1">
-              <Progress value={progressPercentage} className="h-2" />
+              <Progress value={((currentTrial + 1) / totalTrials) * 100} className="h-2" />
             </div>
           </div>
         </div>
@@ -294,7 +201,8 @@ export default function StroopTask() {
             <StimulusDisplay
               stimulus={currentStimulus}
               showStimulus={showStimulus}
-              interTrialDelay={interTrialDelay}
+              showingFixation={showingFixation}
+              interTrialDelay={inInterTrialDelay}
               isPractice={phase === "practice"}
             />
           </CardContent>
