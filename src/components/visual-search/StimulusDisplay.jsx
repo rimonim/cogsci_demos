@@ -1,6 +1,7 @@
 import React from "react";
 
-export default function StimulusDisplay({ stimulus, showStimulus, interTrialDelay, isPractice, colors }) {
+export default function StimulusDisplay({ stimulus, showStimulus, showingFixation, interTrialDelay, isPractice, colors }) {
+  // Show inter-trial delay indicator
   if (interTrialDelay) {
     return (
       <div className="text-center min-h-[400px] flex items-center justify-center">
@@ -9,6 +10,16 @@ export default function StimulusDisplay({ stimulus, showStimulus, interTrialDela
     );
   }
 
+  // Show fixation cross
+  if (showingFixation || (!showStimulus && !stimulus)) {
+    return (
+      <div className="text-center min-h-[400px] flex items-center justify-center">
+        <div className="text-4xl text-slate-400 font-bold">+</div>
+      </div>
+    );
+  }
+
+  // Show stimulus
   if (!showStimulus || !stimulus) {
     return (
       <div className="text-center min-h-[400px] flex items-center justify-center">

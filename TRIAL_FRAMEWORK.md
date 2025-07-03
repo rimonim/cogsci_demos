@@ -216,8 +216,9 @@ This is particularly useful for:
 
 See these files for complete examples:
 - `/src/demos/Flanker.jsx` - Flanker task implementation
-- `/src/demos/Stroop.jsx` - Stroop task implementation  
-- `/src/examples/VisualSearchWithFramework.jsx` - Visual search example
+- `/src/demos/Stroop.jsx` - Stroop task implementation
+- `/src/demos/VisualSearch.jsx` - Visual search task implementation
+- `/src/examples/VisualSearchWithFramework.jsx` - Visual search example (alternate version)
 
 ## Migration from Custom Trial Management
 
