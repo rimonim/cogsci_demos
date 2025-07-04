@@ -1,6 +1,7 @@
 name = "cogsci-demos"
 compatibility_date = "2025-07-02"
+pages_build_output_dir = "dist"
 
 [[kv_namespaces]]
 binding = "RT_DB"
-id = "___"
+id = "46389a6df4354ea3ac1909e7e03c37b6"

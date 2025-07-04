@@ -129,36 +129,124 @@ npm run build
 npx wrangler pages dev dist
 ```
 
-> **Note:** If you see the error "Wrangler requires at least Node.js v20.0.0", you need to update your Node.js version.
+> **Important:** The session-based system requires Cloudflare KV storage to function correctly. Local development with `npm run dev` is suitable for UI testing only. For full functionality testing (sessions, data storage), use either:
+> - `npx wrangler pages dev dist` for local simulation with KV
+> - Deploy to Cloudflare Pages for complete testing
 
-> **Note:** Local testing has some limitations with the session-based system. See [Local Testing Guide](LOCAL_TESTING.md) for details and troubleshooting common issues.
+> **Note:** If you see the error "Wrangler requires at least Node.js v20.0.0", update your Node.js version.
 
 ## Deployment
 
-### Initial Setup
-1. Create a Cloudflare account
-2. Create a KV namespace:
-   ```bash
-   wrangler kv:namespace create RT_DB --production
-   ```
-3. Update `wrangler.toml` with the returned KV namespace ID
-4. Deploy:
-   ```bash
-   npm run deploy
-   ```
+### Prerequisites
+- **Cloudflare account** (free tier is sufficient)
+- **Node.js 20+** installed locally
+- **Git repository** (for automated deployments)
 
-### Important Note on Testing
-The session-based system requires Cloudflare KV storage to function correctly. While basic UI components can be tested locally, the complete session management system requires deployment to Cloudflare Pages for full functionality.
+### Step 1: Create Cloudflare KV Namespace
+The application requires a KV namespace for data storage:
 
-For the best experience:
-1. Deploy to Cloudflare Pages for testing the complete session-based system
-2. Use `npx wrangler pages dev dist` for local testing, which provides a more accurate simulation of the Cloudflare environment
-3. Basic local development with `npm run dev` is suitable for UI component testing only
+```bash
+# Install Wrangler CLI if not already installed
+npm install -g wrangler
 
-### GitHub Actions
-The project includes automated deployment via GitHub Actions. Set these secrets in your GitHub repository:
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+# Login to Cloudflare
+wrangler login
+
+# Create the KV namespace
+wrangler kv namespace create RT_DB
+```
+
+This will output something like:
+```
+🌀 Creating namespace with title "cogsci-demos-RT_DB"
+✅ Success!
+Add the following to your wrangler.toml:
+
+[[kv_namespaces]]
+binding = "RT_DB"
+id = "46389a6df4354ea3ac1909e7e03c37b6"
+
+⚠️  The above command created a namespace called "cogsci-demos-RT_DB". It is not configured for any environment. To use it, add it to your wrangler.toml under [env.production] or at the top level.
+```
+
+**Note:** The warning about `[env.production]` can be safely ignored for this project. The namespace is created successfully and will work with the top-level configuration.
+
+### Step 2: Update Configuration
+Update `wrangler.toml` with your KV namespace ID:
+
+```toml
+name = "cogsci-demos"
+compatibility_date = "2025-07-02"
+pages_build_output_dir = "dist"
+
+[[kv_namespaces]]
+binding = "RT_DB"
+id = "46389a6df4354ea3ac1909e7e03c37b6"  # Replace with your actual KV namespace ID
+```
+
+### Step 3: Deploy Options
+
+#### Option A: Manual Deployment (Quick Start)
+```bash
+# Build the application
+npm run build
+
+# Deploy to Cloudflare Pages
+npm run deploy
+```
+
+The deploy command will:
+1. Upload your built application to Cloudflare Pages
+2. Create a project named "cogsci-demos" if it doesn't exist
+3. Set up the KV binding automatically
+4. Provide you with a live URL
+
+#### Option B: Automated GitHub Deployment (Recommended)
+For automatic deployments on every push:
+
+1. **Fork/clone this repository** to your GitHub account
+
+2. **Set up Cloudflare API credentials:**
+   - Go to Cloudflare dashboard → "My Profile" → "API Tokens"
+   - Create a token with "Cloudflare Pages:Edit" permissions
+   - Note your Account ID from the dashboard
+
+3. **Configure GitHub Secrets:**
+   - Go to your repository → Settings → Secrets and variables → Actions
+   - Add these repository secrets:
+     - `CLOUDFLARE_API_TOKEN`: Your API token from step 2
+     - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+
+4. **Push to main branch** - deployment will happen automatically via GitHub Actions
+
+### Step 4: Configure Your Domain (Optional)
+After deployment, Cloudflare will provide a URL like `https://cogsci-demos.pages.dev`. You can:
+- Use this URL directly
+- Set up a custom domain in the Cloudflare Pages dashboard
+
+### Verification
+After deployment, verify everything works:
+1. Visit your deployed URL
+2. Try creating a session at `/sessions`
+3. Test a cognitive task
+4. Check the results dashboard at `/results`
+
+### Troubleshooting
+
+**"KV namespace not found" error:**
+- Ensure your KV namespace ID is correctly set in `wrangler.toml`
+- Verify the namespace exists: `wrangler kv:namespace list`
+
+**"Wrangler requires Node.js v20+" error:**
+- Update Node.js: `brew install node@20` (macOS) or download from nodejs.org
+
+**Build fails in GitHub Actions:**
+- Check that all dependencies are listed in `package.json`
+- Verify GitHub secrets are set correctly
+
+**Functions not working:**
+- Ensure KV binding is properly configured
+- Check Cloudflare Pages dashboard → Functions tab for error logs
 
 ## API Endpoints
 
