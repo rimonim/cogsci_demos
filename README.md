@@ -7,31 +7,27 @@ A unified, robust platform for cognitive psychology experiments built with React
 ### Experiments
 - **Flanker Task**: Classic attention and response inhibition experiment
 - **Stroop Task**: Color-word interference experiment  
-- **Visual Search Task**: Target detection in visual arrays
-- **N-Back Task**: Working memory assessment task
+- **Visual Search Task**: Target detection in visual arrays with pop-out and conjunction searches
+- **N-Back Task**: Working memory assessment (2-back paradigm)
 - **Unified Trial Management**: Robust, reusable trial sequencing framework
 
 ### Platform Features
 - **Session Management**: Instructor-created sessions with unique codes
 - **Results Dashboard**: Real-time participant data visualization
-- **Session-Based Data**: Filter and export data by instructor session
-- **Data Export**: CSV download for class data analysis
+- **Data Export**: Standardized CSV downloads with camel_case field names
 - **Responsive Design**: Modern UI with Tailwind CSS and unified components
 - **Serverless Backend**: Cloudflare KV for data storage
 - **Race Condition Prevention**: Robust timing and state management
 - **Privacy Controls**: Session-based data isolation
-- **Session-Based System**: Instructor-created sessions for class data collection
-- **Student Privacy Controls**: Opt-in data sharing preferences
 
 ## Session-Based System
 
 The platform includes a comprehensive session-based system for classroom data collection:
 
 ### For Instructors:
-1. Create a session through the Session Manager (/sessions)
+1. Create a session through the Session Manager by navigating to `[domain]/sessions`
 2. Share the generated session link with students
-3. Monitor student progress through the Results Dashboard
-4. Download session-specific CSV data for analysis
+3. Download session-specific CSV data for analysis
 
 ### For Students:
 1. Join a session via the instructor-provided link
@@ -50,17 +46,18 @@ The platform includes a comprehensive session-based system for classroom data co
 
 ### Unified Framework
 All experiments use the standardized `useTrialManager` hook for:
-- Trial sequencing and timing
-- Response handling and timeouts
-- Practice/main phase management
-- Result collection and cleanup
-- Race condition prevention
+- **Prevents race conditions** and timing bugs through careful state management
+- **Accurate trial/response alignment** - responses recorded against correct stimulus
+- **Standardized sequencing** across all experiments with consistent timing
+- **Automatic cleanup** and memory management preventing crashes
+- **Configurable parameters** for timeouts, delays, and stimulus duration
 
 ### Unified UI Components
 Consistent user experience through standardized components:
 - **TaskSetup**: Configurable participant setup with task-specific branding
-- **PracticeComplete**: Practice feedback with performance statistics
-- **TaskComplete**: Results display with detailed analytics and downloads
+- **PracticeComplete**: Practice feedback with accurate performance statistics
+- **TaskComplete**: Results display with detailed analytics and standardized CSV downloads
+- **Standardized CSV exports**: All downloads use camel_case field names with proper data mapping
 
 ## Project Structure
 
@@ -180,56 +177,35 @@ The project includes automated deployment via GitHub Actions. Set these secrets 
 - `GET /api/session/[sessionId]` - Get session data and results (with `?format=csv` option)
 - `DELETE /api/session/[sessionId]` - Clear data for a specific session
 
-## Usage
-
-### For Students
-1. Navigate to the deployed URL
-2. Choose an experiment (Flanker, Stroop, or Visual Search)
-3. Enter your name and student ID
-4. Complete the practice trials  
-5. Complete the main experiment
-6. View your results and download data
-
-### For Instructors
-1. Create a new session with a unique code
-2. Share the session code with students
-3. Access the Results Dashboard to view session data
-4. Filter results by session ID
-5. Export session-specific data as CSV
-6. Analyze performance statistics
-
 ## Documentation
 
 - **[Trial Framework](TRIAL_FRAMEWORK.md)** - Complete guide to the `useTrialManager` hook
 - **[Unified Components](UNIFIED_COMPONENTS.md)** - Documentation for standardized UI components
 - **[Setup Guide](SETUP.md)** - Development environment setup
 
-## Key Features
-
-### Robust Trial Management
-- Prevents race conditions and timing bugs
-- Standardized trial sequencing across all experiments  
-- Automatic cleanup and memory management
-- Configurable timeouts and inter-trial delays
-
-### Consistent User Experience
-- Unified setup, practice, and completion flows
-- Task-specific theming and branding
-- Responsive design for all screen sizes
-- Accessible keyboard navigation
-
-### Research-Ready Data
-- Comprehensive result logging with timestamps
-- Configurable CSV exports with task-specific fields
-- Performance statistics and analysis
-- Privacy controls for data sharing
-
 ## Contributing
 
-1. Follow the unified framework patterns for new experiments
-2. Use the standardized UI components when possible
-3. Update documentation for any new features
-4. Test all experiment phases thoroughly
+### Development Guidelines
+1. **Follow unified framework patterns** - use `useTrialManager` and standardized components
+2. **Maintain consistent styling** - use existing Tailwind classes and component patterns  
+3. **Ensure proper trial alignment** - always pass trial data to `handleResponse`
+4. **Test thoroughly** - verify accuracy calculations and display consistency
+5. **Update documentation** for any new features or changes
+
+### Bug Fix Protocol
+When modifying trial logic:
+1. Check that responses are recorded against the correct trial
+2. Verify display sizes remain consistent across all trial phases
+3. Test CSV exports have correct field mapping
+4. Ensure no memory leaks or infinite loops
+5. Validate accuracy calculations match expected results
+
+### Testing Checklist
+- [ ] Practice trials show correct accuracy feedback
+- [ ] Display sizes remain constant during fixation/stimulus transitions
+- [ ] CSV exports use camel_case field names
+- [ ] No browser crashes or freezes during extended use
+- [ ] Performance metrics calculate correctly
 
 ### For Instructors
 1. Create a session at `/sessions`
@@ -241,13 +217,30 @@ The project includes automated deployment via GitHub Actions. Set these secrets 
 
 ## Data Format
 
-The application collects:
-- Student name and ID
-- Trial number and type (congruent/incongruent)
-- Stimulus presentation
-- Response and reaction time
-- Accuracy
-- Session timestamps
+### Standardized CSV Exports
+All tasks export data with consistent camel_case field names:
+
+**Flanker Task:**
+- `student_name`, `student_id`, `trial_number`, `stimulus_type`, `stimulus_display`
+- `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
+**Stroop Task:**
+- `student_name`, `student_id`, `trial_number`, `stimulus_color`, `stimulus_word`, `stimulus_type`
+- `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
+**Visual Search Task:**
+- `student_name`, `student_id`, `trial_number`, `search_type`, `set_size`, `target_present`
+- `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
+**N-Back Task:**
+- `student_name`, `student_id`, `trial_number`, `stimulus_letter`, `is_target`, `n_back_level`
+- `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
+### Performance Metrics
+- **Flanker**: Congruent vs. incongruent accuracy/RT, flanker effect
+- **Stroop**: Congruent vs. incongruent accuracy/RT, Stroop effect  
+- **Visual Search**: Color popout, orientation popout, and conjunction search performance
+- **N-Back**: Hit rate, false alarm rate, signal detection metrics
 
 ## Browser Compatibility
 
