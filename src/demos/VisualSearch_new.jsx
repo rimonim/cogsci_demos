@@ -19,7 +19,7 @@ const RESPONSE_TIMEOUT = 5000;
 // Color-blind friendly colors
 const COLORS = {
   blue: "#0066CC",
-  orange: "#CC6600"
+  orange: "#FF6600"
 };
 
 // Task conditions
@@ -168,7 +168,7 @@ export default function VisualSearchTask() {
         ...result,
         student_name: studentInfo.name,
         student_id: studentInfo.id,
-        search_type: trial.condition, // Use search_type to match CSV config
+        condition: trial.condition,
         set_size: trial.setSize,
         target_present: trial.targetPresent,
         correct_response: trial.correctResponse,
@@ -265,14 +265,13 @@ export default function VisualSearchTask() {
       const validKeys = ['j', 'k'];
       
       if (validKeys.includes(key)) {
-        // Pass currentStimulus to ensure we're recording response against the correct trial
-        handleResponse(key, Date.now(), currentStimulus);
+        handleResponse(key, Date.now());
       }
     };
     
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [awaitingResponse, handleResponse, currentStimulus]);
+  }, [awaitingResponse, handleResponse]);
 
   // Setup handlers
   const startTask = (info) => {

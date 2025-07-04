@@ -1,4 +1,12 @@
 // Utility functions
+import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+// cn (className) utility for combining Tailwind classes
+export function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
+
 export function createPageUrl(pageName) {
   // Simple utility to create page URLs
   // In a more complex app, this might handle routing logic

@@ -19,7 +19,7 @@ export default function StimulusDisplay({ stimulus, showStimulus, showingFixatio
     );
   }
 
-  // Show stimulus
+  // Show stimulus - only render this when we have stimulus data
   if (!showStimulus || !stimulus) {
     return (
       <div className="text-center min-h-[400px] flex items-center justify-center">
@@ -28,30 +28,33 @@ export default function StimulusDisplay({ stimulus, showStimulus, showingFixatio
     );
   }
 
-  // Calculate grid layout based on set size
-  const gridSize = Math.ceil(Math.sqrt(stimulus.setSize * 1.5)); // Give some extra space
+  // Fixed grid size for consistent display
+  const gridSize = 6; // Fixed 6x6 grid (36 positions) to accommodate up to 24 stimuli
   const positions = [];
   
-  // Generate random positions for stimuli
-  const usedPositions = new Set();
-  for (let i = 0; i < stimulus.stimuli.length; i++) {
-    let pos;
-    do {
-      pos = Math.floor(Math.random() * (gridSize * gridSize));
-    } while (usedPositions.has(pos));
-    usedPositions.add(pos);
-    positions.push(pos);
+  // Generate random positions for stimuli - more robust approach
+  const availablePositions = Array.from({ length: gridSize * gridSize }, (_, i) => i);
+  
+  // Shuffle available positions and take the first N positions
+  for (let i = availablePositions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availablePositions[i], availablePositions[j]] = [availablePositions[j], availablePositions[i]];
+  }
+  
+  // Take the first stimulus.stimuli.length positions
+  for (let i = 0; i < Math.min(stimulus.stimuli.length, availablePositions.length); i++) {
+    positions.push(availablePositions[i]);
   }
 
   return (
     <div className="text-center min-h-[400px] flex flex-col items-center justify-center">
       {/* Search array */}
       <div 
-        className="grid gap-3 mb-8"
+        className="grid gap-2 mb-8"
         style={{ 
           gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
-          width: `${gridSize * 50}px`,
-          height: `${gridSize * 50}px`
+          width: '300px', // Fixed width
+          height: '300px' // Fixed height
         }}
       >
         {Array.from({ length: gridSize * gridSize }, (_, index) => {
@@ -59,7 +62,7 @@ export default function StimulusDisplay({ stimulus, showStimulus, showingFixatio
           const hasStimulus = stimulusIndex !== -1;
           
           if (!hasStimulus) {
-            return <div key={index} className="w-10 h-10" />;
+            return <div key={index} className="w-8 h-8" />;
           }
           
           const item = stimulus.stimuli[stimulusIndex];
@@ -67,14 +70,14 @@ export default function StimulusDisplay({ stimulus, showStimulus, showingFixatio
           const isVertical = item.orientation === 'vertical';
           
           return (
-            <div key={index} className="w-10 h-10 flex items-center justify-center">
+            <div key={index} className="w-8 h-8 flex items-center justify-center">
               <div
                 className="transition-all duration-200"
                 style={{
                   backgroundColor: color,
-                  width: isVertical ? '4px' : '24px',
-                  height: isVertical ? '24px' : '4px',
-                  borderRadius: '2px'
+                  width: isVertical ? '3px' : '20px',
+                  height: isVertical ? '20px' : '3px',
+                  borderRadius: '1px'
                 }}
               />
             </div>

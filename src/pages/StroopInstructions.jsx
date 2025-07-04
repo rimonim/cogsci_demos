@@ -1,53 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye } from 'lucide-react';
-import TaskSwitchDialog from '@/components/TaskSwitchDialog';
-import { detectExistingTaskData, clearAllTaskData } from '@/utils';
 
 export default function StroopInstructions() {
   const navigate = useNavigate();
-  const [showDialog, setShowDialog] = useState(false);
-  const [existingData, setExistingData] = useState(null);
-  const [checkingData, setCheckingData] = useState(false);
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
 
-  const checkForExistingData = async () => {
-    setCheckingData(true);
-    try {
-      const data = await detectExistingTaskData();
-      if (data.hasData) {
-        setExistingData(data);
-        setShowDialog(true);
-      } else {
-        navigate('/stroop/task');
-      }
-    } catch (error) {
-      console.error('Error checking existing data:', error);
-      navigate('/stroop/task');
-    } finally {
-      setCheckingData(false);
-    }
-  };
-
-  const handleClearAndContinue = async () => {
-    try {
-      await clearAllTaskData();
-      setShowDialog(false);
-      navigate('/stroop/task');
-    } catch (error) {
-      console.error('Error clearing data:', error);
-      navigate('/stroop/task');
-    }
-  };
-
-  const handleContinueWithExisting = () => {
-    setShowDialog(false);
-    navigate('/stroop/task');
-  };
-
-  const handleCancel = () => {
-    setShowDialog(false);
+  const startPractice = () => {
+    // Preserve any session parameters when navigating
+    const destination = '/stroop/task' + (sessionId ? `?session=${sessionId}` : '');
+    navigate(destination);
   };
 
   return (
@@ -120,25 +85,13 @@ export default function StroopInstructions() {
               <Button 
                 className="w-full bg-purple-600 hover:bg-purple-700" 
                 size="lg"
-                onClick={checkForExistingData}
-                disabled={checkingData}
+                onClick={startPractice}
               >
-                {checkingData ? 'Checking...' : 'Start Practice Trials'}
+                Start Practice Trials
               </Button>
             </div>
           </CardContent>
         </Card>
-
-        {showDialog && (
-          <TaskSwitchDialog
-            currentTask="stroop"
-            existingTasks={existingData.tasks}
-            dataCount={existingData.count}
-            onClearAndContinue={handleClearAndContinue}
-            onContinueWithExisting={handleContinueWithExisting}
-            onCancel={handleCancel}
-          />
-        )}
       </div>
     </div>
   );

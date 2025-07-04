@@ -85,17 +85,25 @@ export default function TaskComplete({ results, studentInfo, config }) {
     
     const csvContent = [
       headers.join(","),
-      ...results.map(r => [
-        `"${r.student_name || studentInfo?.name || 'Unknown'}"`,
-        `"${r.student_id || studentInfo?.id || 'Unknown'}"`,
-        r.trial_number || '',
-        `"${r.stimulus_type || r.condition || ''}"`,
-        `"${r.correct_response || ''}"`,
-        `"${r.participant_response || r.response || ''}"`,
-        r.reaction_time || 0,
-        r.is_correct || false,
-        `"${r.session_start || new Date().toISOString()}"`
-      ].join(","))
+      ...results.map(r => 
+        headers.map(field => {
+          // Get the value for this field from the result object
+          let value = r[field];
+          
+          // Handle special cases and fallbacks
+          if (field === 'student_name') value = value || studentInfo?.name || 'Unknown';
+          if (field === 'student_id') value = value || studentInfo?.id || 'Unknown';
+          if (field === 'session_start_time') value = value || r.session_start || new Date().toISOString();
+          
+          // Convert boolean to string
+          if (typeof value === 'boolean') return value.toString();
+          
+          // Wrap strings in quotes, keep numbers as-is
+          if (typeof value === 'string') return `"${value}"`;
+          
+          return value || '';
+        }).join(",")
+      )
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });

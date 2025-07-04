@@ -1,14 +1,19 @@
 // FlankerResult entity - handles data storage via API
+import { SessionContext } from '../utils/sessionContext';
+
 export class FlankerResult {
   static async create(data) {
     try {
+      // Enrich data with session information
+      const enrichedData = SessionContext.enrichResultData(data);
+      
       // Try to send to the API first
       const response = await fetch('/api/record', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(enrichedData)
       });
       
       if (response.ok) {
@@ -16,26 +21,25 @@ export class FlankerResult {
         // Also store locally as backup
         const results = JSON.parse(localStorage.getItem('flankerResults') || '[]');
         results.push({
-          ...data,
-          id: Date.now(),
-          timestamp: new Date().toISOString()
+          ...enrichedData,
+          id: Date.now()
         });
         localStorage.setItem('flankerResults', JSON.stringify(results));
-        return { success: true, data };
+        return { success: true, data: enrichedData };
       } else {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
       console.warn('Failed to save to API, storing locally:', error.message);
       // Fallback to localStorage if API fails
+      const enrichedData = SessionContext.enrichResultData(data);
       const results = JSON.parse(localStorage.getItem('flankerResults') || '[]');
       results.push({
-        ...data,
-        id: Date.now(),
-        timestamp: new Date().toISOString()
+        ...enrichedData,
+        id: Date.now()
       });
       localStorage.setItem('flankerResults', JSON.stringify(results));
-      return { success: true, data, fallback: true };
+      return { success: true, data: enrichedData, fallback: true };
     }
   }
   

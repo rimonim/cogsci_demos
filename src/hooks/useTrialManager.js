@@ -154,7 +154,7 @@ export function useTrialManager({
   }, [getCurrentSequence, onTrialStart, responseTimeout, fixationDelay, showFixation]);
 
   // Handle response
-  const handleResponse = useCallback((response, reactionTime) => {
+  const handleResponse = useCallback((response, reactionTime, trialData = null) => {
     if (!awaitingResponseRef.current || isAdvancingRef.current) return;
 
     isAdvancingRef.current = true;
@@ -163,23 +163,34 @@ export function useTrialManager({
     setShowingFixation(false);
     setInInterTrialDelay(true);
 
-    const trial = getCurrentTrial();
+    // Use provided trial data if available, otherwise fall back to getCurrentTrial
+    const trial = trialData || getCurrentTrial();
+    const currentTrialIndex = currentTrialRef.current;
+    const currentPhase = phaseRef.current;
+    
+    console.log(`[TRIAL MANAGER DEBUG] Processing response for trial ${currentTrialIndex + 1}:`, {
+      stimulus: trial?.display || trial?.stimulus,
+      correctResponse: trial?.correct || trial?.correctResponse,
+      participantResponse: response,
+      usingProvidedTrialData: !!trialData
+    });
+    
     const actualReactionTime = response === 'timeout' ? responseTimeout : (reactionTime - trialStartTime);
 
     const trialResult = {
-      trial_number: currentTrialRef.current + 1,
-      phase: phaseRef.current,
+      trial_number: currentTrialIndex + 1,
+      phase: currentPhase,
       response,
       reaction_time: actualReactionTime,
       timestamp: new Date().toISOString(),
       ...trial // Include all trial data
     };
 
-    // Call user-defined trial end callback
-    const processedResult = onTrialEnd?.(trialResult, trial, currentTrialRef.current, phaseRef.current) || trialResult;
+    // Call user-defined trial end callback with the correct trial data
+    const processedResult = onTrialEnd?.(trialResult, trial, currentTrialIndex, currentPhase) || trialResult;
 
     // Store result
-    if (phaseRef.current === 'practice') {
+    if (currentPhase === 'practice') {
       setPracticeResults(prev => [...prev, processedResult]);
     } else {
       setResults(prev => [...prev, processedResult]);
@@ -191,11 +202,11 @@ export function useTrialManager({
       setInInterTrialDelay(false);
       
       const sequence = getCurrentSequence();
-      const nextTrialIndex = currentTrialRef.current + 1;
+      const nextTrialIndex = currentTrialIndex + 1;
 
       if (nextTrialIndex >= sequence.length) {
         // Phase complete
-        if (phaseRef.current === 'practice') {
+        if (currentPhase === 'practice') {
           onPhaseComplete?.('practice', practiceResults);
           setPhase('practice_complete');
         } else {

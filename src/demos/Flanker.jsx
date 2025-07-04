@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
-import TaskSetup from "@/components/ui/TaskSetup";
-import { FLANKER_CONFIG, FLANKER_PRACTICE_CONFIG, FLANKER_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
+import { FLANKER_PRACTICE_CONFIG, FLANKER_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
 import StimulusDisplay from "@/components/flanker/StimulusDisplay";
 import TaskComplete from "@/components/ui/TaskComplete";
 import PracticeComplete from "@/components/ui/PracticeComplete";
@@ -29,8 +28,37 @@ export default function FlankerTask() {
   const [currentStimulus, setCurrentStimulus] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
+
+  // Initialize student info based on mode
+  useEffect(() => {
+    const initializeStudentInfo = () => {
+      if (sessionId && window.sessionData) {
+        // Session mode: use session data
+        setStudentInfo({
+          name: window.sessionData.name || 'Session Participant',
+          id: window.sessionData.id || sessionId,
+          shareData: true
+        });
+      } else {
+        // Standalone mode: use anonymous data
+        setStudentInfo({
+          name: 'Anonymous User',
+          id: `standalone_${Date.now()}`,
+          shareData: false
+        });
+      }
+      setSessionStartTime(new Date().toISOString());
+      setIsLoading(false);
+    };
+
+    // Small delay to ensure session data is loaded
+    setTimeout(initializeStudentInfo, 100);
+  }, [sessionId]);
 
   // Generate trial sequences
   const generateTrials = useCallback((numTrials) => {
@@ -74,6 +102,12 @@ export default function FlankerTask() {
     showFixation: false, // Flanker doesn't use fixation crosses
     
     onTrialStart: (trial, trialIndex, currentPhase) => {
+      console.log(`[FLANKER DEBUG] Trial ${trialIndex + 1} Starting:`, {
+        phase: currentPhase,
+        stimulus: trial.display,
+        type: trial.type,
+        correctResponse: trial.correct
+      });
       setCurrentStimulus(trial);
       setFeedback(null);
     },
@@ -81,7 +115,17 @@ export default function FlankerTask() {
     onTrialEnd: (result, trial, trialIndex, currentPhase) => {
       const isCorrect = result.response === trial.correct;
       
-      // Enhanced result object
+      console.log(`[FLANKER DEBUG] Trial ${trialIndex + 1} Ended:`, {
+        phase: currentPhase,
+        stimulus: trial.display,
+        type: trial.type,
+        correctResponse: trial.correct,
+        participantResponse: result.response,
+        isCorrect: isCorrect,
+        responseTime: result.reaction_time
+      });
+      
+      // Enhanced result object with session info if available
       const enhancedResult = {
         ...result,
         student_name: studentInfo.name,
@@ -93,13 +137,17 @@ export default function FlankerTask() {
         is_correct: isCorrect,
         session_start_time: sessionStartTime,
         task_type: 'flanker',
-        share_data: studentInfo.shareData
+        share_data: studentInfo.shareData,
+        ...(sessionId && { session_id: sessionId })
       };
 
       // Show feedback for practice trials
       if (currentPhase === 'practice') {
         const feedbackText = result.response === 'timeout' ? 'Too Slow' : (isCorrect ? 'Correct!' : 'Incorrect');
-        setFeedback({ show: true, text: feedbackText, correct: isCorrect });
+        const feedbackObj = { show: true, text: feedbackText, correct: isCorrect };
+        
+        console.log(`[FLANKER DEBUG] Setting feedback:`, feedbackObj);
+        setFeedback(feedbackObj);
       }
 
       // Save to API for main task
@@ -123,6 +171,14 @@ export default function FlankerTask() {
     }
   });
 
+  // Auto-start when initialized
+  useEffect(() => {
+    if (!isLoading && sessionStartTime && phase === 'setup') {
+      console.log('Auto-starting Flanker practice');
+      startPractice();
+    }
+  }, [isLoading, sessionStartTime, phase, startPractice]);
+
   // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -133,20 +189,14 @@ export default function FlankerTask() {
       else if (e.key === "ArrowRight") response = "right";
       
       if (response) {
-        handleResponse(response, Date.now());
+        // Pass the current stimulus data to ensure correct trial alignment
+        handleResponse(response, Date.now(), currentStimulus);
       }
     };
     
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [awaitingResponse, handleResponse]);
-
-  // Setup handlers
-  const startTask = (name, id, shareData = false) => {
-    setStudentInfo({ name, id, shareData });
-    setSessionStartTime(new Date().toISOString());
-    startPractice();
-  };
+  }, [awaitingResponse, handleResponse, currentStimulus]);
 
   const startMainExperiment = () => {
     startMainTask();
@@ -156,13 +206,21 @@ export default function FlankerTask() {
     navigate('/');
   };
 
-  // Render phases
-  if (phase === "setup") {
-    return <TaskSetup onStart={startTask} config={FLANKER_CONFIG} />;
+  // Show loading state while initializing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading Flanker Task...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Render phases
   if (phase === "practice_complete") {
-    return <PracticeComplete onStartExperiment={startMainExperiment} config={FLANKER_PRACTICE_CONFIG} />;
+    return <PracticeComplete results={practiceResults} onStartExperiment={startMainExperiment} config={FLANKER_PRACTICE_CONFIG} />;
   }
 
   if (phase === "complete") {

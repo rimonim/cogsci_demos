@@ -1,53 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Search } from 'lucide-react';
-import TaskSwitchDialog from '@/components/TaskSwitchDialog';
-import { detectExistingTaskData, clearAllTaskData } from '@/utils';
 
 export default function VisualSearchInstructions() {
   const navigate = useNavigate();
-  const [showDialog, setShowDialog] = useState(false);
-  const [existingData, setExistingData] = useState(null);
-  const [checkingData, setCheckingData] = useState(false);
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
 
-  const checkForExistingData = async () => {
-    setCheckingData(true);
-    try {
-      const data = await detectExistingTaskData();
-      if (data.hasData && !data.tasks.includes('visual_search')) {
-        setExistingData(data);
-        setShowDialog(true);
-      } else {
-        navigate('/visual-search/task');
-      }
-    } catch (error) {
-      console.error('Error checking existing data:', error);
-      navigate('/visual-search/task');
-    } finally {
-      setCheckingData(false);
-    }
-  };
-
-  const handleClearAndContinue = async () => {
-    try {
-      await clearAllTaskData();
-      setShowDialog(false);
-      navigate('/visual-search/task');
-    } catch (error) {
-      console.error('Error clearing data:', error);
-      navigate('/visual-search/task');
-    }
-  };
-
-  const handleContinueWithExisting = () => {
-    setShowDialog(false);
-    navigate('/visual-search/task');
-  };
-
-  const handleCancel = () => {
-    setShowDialog(false);
+  const startPractice = () => {
+    // Preserve any session parameters when navigating
+    const destination = '/visual-search/task' + (sessionId ? `?session=${sessionId}` : '');
+    navigate(destination);
   };
 
   return (
@@ -75,29 +40,16 @@ export default function VisualSearchInstructions() {
             </ul>
             <div className="text-center">
               <Button
-                onClick={checkForExistingData}
-                disabled={checkingData}
+                onClick={startPractice}
                 size="lg"
                 className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 text-lg"
               >
-                {checkingData ? 'Checking...' : <>Start Visual Search Task</>}
+                Start Visual Search Task
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-      {showDialog && (
-        <TaskSwitchDialog
-          isOpen={showDialog}
-          onClearAndContinue={handleClearAndContinue}
-          onContinueWithExisting={handleContinueWithExisting}
-          onCancel={handleCancel}
-          existingTasks={existingData?.tasks || []}
-          currentTask="visual_search"
-          dataCount={existingData?.count || 0}
-          newTaskName="Visual Search"
-        />
-      )}
     </>
   );
 }

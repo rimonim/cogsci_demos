@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
 import TaskSetup from "@/components/ui/TaskSetup";
@@ -14,12 +14,16 @@ import TaskComplete from "@/components/ui/TaskComplete";
 import PracticeComplete from "@/components/ui/PracticeComplete";
 
 const TOTAL_TRIALS = 60;
-const PRACTICE_TRIALS = 20;
-const RESPONSE_TIMEOUT = 3000;
+const PRACTICE_TRIALS = 15;
+const RESPONSE_TIMEOUT = 2500;
 const N_BACK_LEVEL = 2; // 2-back task
 
 export default function NBackTask() {
-  const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
+  
+  const [studentInfo, setStudentInfo] = useState({ name: "Anonymous", id: "local", shareData: false });
+  const [isSessionMode, setIsSessionMode] = useState(false);
   const [currentLetter, setCurrentLetter] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
@@ -112,8 +116,8 @@ export default function NBackTask() {
     practiceTrials,
     mainTrials,
     responseTimeout: RESPONSE_TIMEOUT,
-    // Adjusted timing for 3-second trials: 500ms stimulus + 2500ms inter-trial = 3000ms total
-    interTrialDelay: { practice: 2500, task: 2500 },
+    // Faster N-Back timing: 500ms stimulus + 2000ms inter-trial = 2.5 seconds total
+    interTrialDelay: { practice: 1500, task: 2000 },
     fixationDelay: 0, // No fixation delay
     showFixation: false, // Remove fixation cross
     stimulusDuration: 500, // Show stimulus for only 500ms, then blank screen for remaining response time
@@ -212,6 +216,39 @@ export default function NBackTask() {
     }
   });
 
+  // Check for session data on component mount
+  useEffect(() => {
+    if (sessionId && window.sessionData) {
+      console.log('Found session data:', window.sessionData);
+      console.log('Found session data:', window.sessionData);
+      const { studentInfo: sessionStudentInfo } = window.sessionData;
+      if (sessionStudentInfo && sessionStudentInfo.name) {
+        const sessionInfo = {
+          name: sessionStudentInfo.name,
+          id: sessionStudentInfo.studentId || sessionStudentInfo.id || '',
+          shareData: sessionStudentInfo.shareData || true
+        };
+        setStudentInfo(sessionInfo);
+        setIsSessionMode(true);
+        setSessionStartTime(new Date().toISOString());
+        console.log('Session mode initialized for:', sessionStudentInfo.name);
+      }
+    } else {
+      // No session data - standalone mode
+      console.log('No session data found, starting N-Back in standalone mode');
+      setIsSessionMode(false);
+      setSessionStartTime(new Date().toISOString());
+    }
+  }, [sessionId]);
+
+  // Auto-start practice when ready
+  useEffect(() => {
+    if (sessionStartTime && phase === 'setup') {
+      console.log('Auto-starting N-Back practice');
+      setTimeout(() => startPractice(), 100);
+    }
+  }, [sessionId, startPractice]);
+
   // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -242,9 +279,16 @@ export default function NBackTask() {
     navigate('/');
   };
 
-  // Render phases
+  // Show loading while initializing
   if (phase === "setup") {
-    return <TaskSetup onStart={startTask} config={NBACK_CONFIG} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading N-Back task...</p>
+        </div>
+      </div>
+    );
   }
 
   if (phase === "practice_complete") {

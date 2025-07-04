@@ -13,6 +13,8 @@ const NBackDemo = lazy(() => import('./demos/NBack'));
 const NBackInstructions = lazy(() => import('./pages/NBackInstructions'));
 const Results = lazy(() => import('./pages/Results'));
 const Instructions = lazy(() => import('./pages/Instructions'));
+const SessionJoin = lazy(() => import('./pages/SessionJoin'));
+const SessionManager = lazy(() => import('./components/SessionManager'));
 
 // Loading component for better UX during chunk loading
 const LoadingSpinner = () => (
@@ -29,6 +31,8 @@ function App() {
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/session/:sessionId" element={<SessionJoin />} />
+        <Route path="/sessions" element={<SessionManager />} />
         <Route path="/flanker" element={<FlankerInstructions />} />
         <Route path="/flanker/task" element={<FlankerDemo />} />
         <Route path="/stroop" element={<StroopInstructions />} />

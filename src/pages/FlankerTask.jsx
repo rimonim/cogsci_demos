@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import TaskSetup from "../components/flanker/TaskSetup";
 import StimulusDisplay from "../components/flanker/StimulusDisplay";
@@ -23,8 +23,12 @@ const stimuli = [
 ];
 
 export default function FlankerTask() {
-  const [phase, setPhase] = useState("setup"); // setup, practice, practice_complete, task, complete
-  const [studentInfo, setStudentInfo] = useState({ name: "", id: "" });
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
+  
+  const [phase, setPhase] = useState("loading"); // loading, setup, practice, practice_complete, task, complete
+  const [studentInfo, setStudentInfo] = useState({ name: "Anonymous", id: "local" });
+  const [isSessionMode, setIsSessionMode] = useState(false);
   const [currentTrial, setCurrentTrial] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [trialStartTime, setTrialStartTime] = useState(null);
@@ -53,6 +57,34 @@ export default function FlankerTask() {
     return trials.slice(0, numTrials);
   }, []);
 
+  // Check for session data on component mount
+  useEffect(() => {
+    if (sessionId && window.sessionData) {
+      console.log('Found session data:', window.sessionData);
+      const { studentInfo: sessionStudentInfo } = window.sessionData;
+      if (sessionStudentInfo && sessionStudentInfo.name) {
+        setStudentInfo({
+          name: sessionStudentInfo.name,
+          id: sessionStudentInfo.studentId || sessionStudentInfo.id || ''
+        });
+        setIsSessionMode(true);
+        setSessionStartTime(new Date().toISOString());
+        setTrialSequence(generateTrials(PRACTICE_TRIALS));
+        setCurrentTrial(0);
+        setPhase("practice");
+        console.log('Auto-starting task with session data for:', sessionStudentInfo.name);
+      }
+    } else {
+      // No session data - standalone mode, start directly
+      console.log('No session data found, starting in standalone mode');
+      setIsSessionMode(false);
+      setSessionStartTime(new Date().toISOString());
+      setTrialSequence(generateTrials(PRACTICE_TRIALS));
+      setCurrentTrial(0);
+      setPhase("practice");
+    }
+  }, [sessionId, generateTrials]);
+
   const handleResponse = useCallback(async (response, reactionTime) => {
     if (responseGivenRef.current || !currentStimulus) return;
     
@@ -76,10 +108,21 @@ export default function FlankerTask() {
     } else { // 'task' phase
       const actualRT = reactionTime || (performance.now() - trialStartTime);
       const result = {
-        student_name: studentInfo.name, student_id: studentInfo.id, trial_number: currentTrial + 1,
-        stimulus_type: currentStimulus.type, stimulus_display: currentStimulus.display,
-        correct_response: currentStimulus.correct, participant_response: response,
-        reaction_time: Math.round(actualRT), is_correct: isCorrect, session_start_time: sessionStartTime,
+        student_name: studentInfo.name, 
+        student_id: studentInfo.id, 
+        trial_number: currentTrial + 1,
+        stimulus_type: currentStimulus.type, 
+        stimulus_display: currentStimulus.display,
+        correct_response: currentStimulus.correct, 
+        participant_response: response,
+        reaction_time: Math.round(actualRT), 
+        is_correct: isCorrect, 
+        session_start_time: sessionStartTime,
+        // Include session data if available
+        ...(isSessionMode && window.sessionData && {
+          session_id: window.sessionData.sessionId,
+          task_type: 'flanker'
+        })
       };
       setTrialResults(prev => [...prev, result]);
       try {
@@ -149,7 +192,18 @@ export default function FlankerTask() {
 
   useEffect(() => () => clearTimeout(timeoutIdRef.current), []);
 
-  if (phase === "setup") return <TaskSetup onStart={startTask} />;
+  // Show loading while initializing
+  if (phase === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading task...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "practice_complete") return <PracticeComplete onStartExperiment={startMainExperiment} />;
   if (phase === "complete") return <TaskComplete results={trialResults} studentInfo={studentInfo} />;
 

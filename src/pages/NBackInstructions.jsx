@@ -1,10 +1,20 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Brain } from 'lucide-react';
 
 export default function NBackInstructions() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
+
+  const startPractice = () => {
+    // Preserve any session parameters when navigating
+    const destination = '/nback/task' + (sessionId ? `?session=${sessionId}` : '');
+    navigate(destination);
+  };
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
       <div className="max-w-2xl mx-auto pt-8">
@@ -79,11 +89,13 @@ export default function NBackInstructions() {
             </div>
 
             <div className="text-center pt-4">
-              <Link to="/nback/task">
-                <Button className="w-full bg-indigo-600 hover:bg-indigo-700" size="lg">
-                  Start Practice Trials
-                </Button>
-              </Link>
+              <Button 
+                className="w-full bg-indigo-600 hover:bg-indigo-700" 
+                size="lg"
+                onClick={startPractice}
+              >
+                Start Practice Trials
+              </Button>
             </div>
           </CardContent>
         </Card>

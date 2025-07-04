@@ -3,29 +3,67 @@ import { FlankerResult } from "@/entities/FlankerResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Users, TrendingUp, Clock, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { clearAllTaskData } from "@/utils";
+import { SessionContext } from "@/utils/sessionContext";
 
 import ResultsSummary from "@/components/results/ResultsSummary";
-import ParticipantTable from "@/components/results/ParticipantTable";
+import ParticipantTable from "@/components/results/ParticipantTable.jsx";
 
 export default function Results() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [availableSessions, setAvailableSessions] = useState([]);
+  const [isSessionView, setIsSessionView] = useState(false);
 
   useEffect(() => {
-    loadResults();
+    // Try to get session ID from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionIdFromUrl = urlParams.get('session');
+    if (sessionIdFromUrl) {
+      setCurrentSessionId(sessionIdFromUrl);
+      setIsSessionView(true);
+    }
+    
+    loadResults(sessionIdFromUrl);
+    loadAvailableSessions();
   }, []);
 
-  const loadResults = async () => {
+  const loadAvailableSessions = async () => {
     try {
-      // Load from API (shared data)
+      const response = await fetch('/api/session');
+      if (response.ok) {
+        const sessions = await response.json();
+        setAvailableSessions(sessions);
+      }
+    } catch (error) {
+      console.error("Error loading sessions:", error);
+    }
+  };
+
+  const loadResults = async (sessionId = null) => {
+    try {
+      // If we have a session ID, load from session API
+      if (sessionId) {
+        const response = await fetch(`/api/session/${sessionId}`);
+        if (response.ok) {
+          const sessionData = await response.json();
+          setResults(sessionData.results || []);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Otherwise load from API (shared data)
       const apiData = await FlankerResult.list("-created_date");
       
       // Also load from local storage for all task types
       const flankerLocal = JSON.parse(localStorage.getItem('flankerResults') || '[]');
       const stroopLocal = JSON.parse(localStorage.getItem('stroopResults') || '[]');
       const visualSearchLocal = JSON.parse(localStorage.getItem('visualSearchResults') || '[]');
+      const nBackLocal = JSON.parse(localStorage.getItem('nBackResults') || '[]');
       
       // Add task_type to local data if missing
       const flankerLocalWithType = flankerLocal.map(item => ({
@@ -43,8 +81,19 @@ export default function Results() {
         task_type: item.task_type || 'visual_search'
       }));
       
+      const nBackLocalWithType = nBackLocal.map(item => ({
+        ...item, 
+        task_type: item.task_type || 'n_back'
+      }));
+      
       // Combine API and local data, removing duplicates
-      const allData = [...apiData, ...flankerLocalWithType, ...stroopLocalWithType, ...visualSearchLocalWithType];
+      const allData = [
+        ...apiData, 
+        ...flankerLocalWithType, 
+        ...stroopLocalWithType, 
+        ...visualSearchLocalWithType,
+        ...nBackLocalWithType
+      ];
       
       // Remove duplicates based on timestamp and participant
       const uniqueData = allData.filter((item, index, self) => 
@@ -60,6 +109,17 @@ export default function Results() {
       console.error("Error loading results:", error);
     }
     setLoading(false);
+  };
+
+  const switchToSession = (sessionId) => {
+    setCurrentSessionId(sessionId);
+    setIsSessionView(true);
+    loadResults(sessionId);
+    
+    // Update URL with session parameter
+    const url = new URL(window.location);
+    url.searchParams.set('session', sessionId);
+    window.history.pushState({}, '', url);
   };
 
   const handleClearAllData = async () => {
@@ -83,22 +143,53 @@ export default function Results() {
   const isMixed = taskTypes.length > 1;
   const primaryTask = taskTypes.length === 1 ? taskTypes[0] : null;
 
+  // Find current session info if we're in session view
+  const currentSession = isSessionView && availableSessions.find(s => s.id === currentSessionId);
+
   const getResultsTitle = () => {
+    if (isSessionView && currentSession) {
+      return `Session: ${currentSession.name || currentSessionId}`;
+    }
+    
     if (results.length === 0) return "Results Dashboard";
     if (isMixed) return "Mixed task performance analysis";
     if (primaryTask === 'flanker') return "Flanker task performance analysis";
     if (primaryTask === 'stroop') return "Stroop task performance analysis";
     if (primaryTask === 'visual_search') return "Visual search task performance analysis";
+    if (primaryTask === 'n_back') return "N-back task performance analysis";
     return "Cognitive task performance analysis";
   };
 
-  const downloadAllResults = () => {
+  const downloadAllResults = async () => {
     if (results.length === 0) return;
 
+    // If we're viewing a session, use session endpoint for CSV
+    if (isSessionView && currentSessionId) {
+      try {
+        const response = await fetch(`/api/session/${currentSessionId}?format=csv`);
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `session_${currentSessionId}_results.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          return;
+        }
+      } catch (error) {
+        console.error("Error downloading session CSV:", error);
+        // Fall back to client-side CSV generation
+      }
+    }
+
+    // Client-side CSV generation (fallback or non-session view)
     const headers = [
       "task_type", "student_name", "student_id", "trial_number", "stimulus_type", "stimulus_display",
       "correct_response", "participant_response", "reaction_time_ms", "is_correct", 
-      "session_start_time", "date_completed"
+      "session_id", "session_start_time", "date_completed"
     ];
 
     const csvContent = [
@@ -114,7 +205,8 @@ export default function Results() {
         r.participant_response,
         r.reaction_time || r.reaction_time_ms,
         r.is_correct,
-        r.session_start_time,
+        r.session_id || '',
+        r.session_start_time || '',
         r.created_date || r.timestamp
       ].join(","))
     ].join("\n");
@@ -137,6 +229,7 @@ export default function Results() {
       acc[key] = {
         name: result.student_name,
         id: result.student_id,
+        sessionId: result.session_id,
         sessionStart: result.session_start_time,
         trials: []
       };
@@ -154,8 +247,41 @@ export default function Results() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Results Dashboard</h1>
             <p className="text-slate-600 mt-1">{getResultsTitle()}</p>
+            
+            {isSessionView && currentSession && (
+              <div className="mt-2 flex items-center gap-2">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                  Session ID: {currentSessionId}
+                </Badge>
+                <Badge variant="outline" className="bg-green-50 text-green-700">
+                  {results.length} Total Results
+                </Badge>
+                <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                  {participants.length} Students
+                </Badge>
+              </div>
+            )}
           </div>
           <div className="flex gap-3">
+            {isSessionView && (
+              <Button
+                onClick={() => {
+                  setIsSessionView(false);
+                  setCurrentSessionId(null);
+                  loadResults();
+                  
+                  // Update URL to remove session parameter
+                  const url = new URL(window.location);
+                  url.searchParams.delete('session');
+                  window.history.pushState({}, '', url);
+                }}
+                variant="outline"
+                className="text-slate-600"
+              >
+                ← Back to All Results
+              </Button>
+            )}
+            
             <Button
               onClick={handleClearAllData}
               disabled={results.length === 0 || clearing}
@@ -171,7 +297,7 @@ export default function Results() {
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export All Data
+              Export {isSessionView ? 'Session' : 'All'} Data
             </Button>
           </div>
         </div>
@@ -187,25 +313,64 @@ export default function Results() {
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Data Yet</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Data {isSessionView ? 'For This Session' : 'Yet'}</h3>
               <p className="text-slate-600 mb-6">
-                Students haven't started taking experiments yet. Once they begin, results will appear here in real-time.
+                {isSessionView 
+                  ? "This session doesn't have any results yet. Once students join and complete experiments, results will appear here."
+                  : "Students haven't started taking experiments yet. Once they begin, results will appear here in real-time."
+                }
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
                 <h4 className="font-semibold text-blue-900 mb-2">📝 For Instructors:</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Have students visit the homepage and start an experiment</li>
+                  <li>• {isSessionView 
+                    ? "Share your session link with students to get started" 
+                    : "Create a session to start collecting class data"
+                  }</li>
                   <li>• Results will automatically aggregate here</li>
                   <li>• Download CSV data for R analysis when ready</li>
-                  <li>• Use "Reset Data" before each new class session</li>
+                  {!isSessionView && (
+                    <li>• Use "Reset Data" before each new class session</li>
+                  )}
                 </ul>
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-8">
-            <ResultsSummary results={results} participants={participants} />
-            <ParticipantTable participants={participants} />
+            {/* Session selector for non-session view */}
+            {!isSessionView && availableSessions.length > 0 && (
+              <Card className="bg-white border-slate-200">
+                <CardHeader>
+                  <CardTitle className="text-xl">Available Sessions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availableSessions.map(session => (
+                      <Card 
+                        key={session.id} 
+                        className="cursor-pointer hover:shadow-md transition-all"
+                        onClick={() => switchToSession(session.id)}
+                      >
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold">{session.name || `Session ${session.id}`}</h3>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="outline">{session.resultCount || 0} Results</Badge>
+                            <Badge variant="outline">{session.studentCount || 0} Students</Badge>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-2">
+                            Created {new Date(session.created).toLocaleDateString()}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            <ResultsSummary results={results} participants={participants} isSessionView={isSessionView} />
+            <ParticipantTable participants={participants} isSessionView={isSessionView} sessionId={currentSessionId} />
           </div>
         )}
       </div>

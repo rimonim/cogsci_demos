@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { StroopResult } from "@/entities/StroopResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTrialManager } from "@/hooks/useTrialManager";
 
 import TaskSetup from "@/components/ui/TaskSetup";
@@ -41,7 +41,11 @@ const stimuli = [
 ];
 
 export default function StroopTask() {
-  const [studentInfo, setStudentInfo] = useState({ name: "", id: "", shareData: false });
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session');
+  
+  const [studentInfo, setStudentInfo] = useState({ name: "Anonymous", id: "local", shareData: false });
+  const [isSessionMode, setIsSessionMode] = useState(false);
   const [currentStimulus, setCurrentStimulus] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
 
@@ -56,8 +60,8 @@ export default function StroopTask() {
     return trials;
   }, []);
 
-  const practiceTrials = generateTrials(PRACTICE_TRIALS);
-  const mainTrials = generateTrials(TOTAL_TRIALS);
+  const practiceTrials = useMemo(() => generateTrials(PRACTICE_TRIALS), [generateTrials]);
+  const mainTrials = useMemo(() => generateTrials(TOTAL_TRIALS), [generateTrials]);
 
   const {
     phase,
@@ -101,7 +105,11 @@ export default function StroopTask() {
         is_correct: isCorrect,
         session_start_time: sessionStartTime,
         task_type: 'stroop',
-        share_data: studentInfo.shareData
+        share_data: studentInfo.shareData,
+        // Include session data if available
+        ...(isSessionMode && window.sessionData && {
+          session_id: window.sessionData.sessionId
+        })
       };
 
       // Save to API for main task
@@ -125,6 +133,39 @@ export default function StroopTask() {
     }
   });
 
+  // Check for session data on component mount
+  useEffect(() => {
+    if (sessionId && window.sessionData) {
+      console.log('Found session data:', window.sessionData);
+      console.log('Found session data:', window.sessionData);
+      const { studentInfo: sessionStudentInfo } = window.sessionData;
+      if (sessionStudentInfo && sessionStudentInfo.name) {
+        const sessionInfo = {
+          name: sessionStudentInfo.name,
+          id: sessionStudentInfo.studentId || sessionStudentInfo.id || '',
+          shareData: sessionStudentInfo.shareData || true
+        };
+        setStudentInfo(sessionInfo);
+        setIsSessionMode(true);
+        setSessionStartTime(new Date().toISOString());
+        console.log('Session mode initialized for:', sessionStudentInfo.name);
+      }
+    } else {
+      // No session data - standalone mode
+      console.log('No session data found, starting Stroop in standalone mode');
+      setIsSessionMode(false);
+      setSessionStartTime(new Date().toISOString());
+    }
+  }, [sessionId]);
+
+  // Auto-start practice when ready
+  useEffect(() => {
+    if (sessionStartTime && phase === 'setup') {
+      console.log('Auto-starting Stroop practice');
+      setTimeout(() => startPractice(), 100);
+    }
+  }, [sessionId, startPractice]);
+
   // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -134,13 +175,14 @@ export default function StroopTask() {
       const validKeys = ['b', 'r', 'g', 'y'];
       
       if (validKeys.includes(key)) {
-        handleResponse(key, Date.now());
+        // Pass currentStimulus to ensure we're recording response against the correct trial
+        handleResponse(key, Date.now(), currentStimulus);
       }
     };
     
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [awaitingResponse, handleResponse]);
+  }, [awaitingResponse, handleResponse, currentStimulus]);
 
   // Setup handlers
   const startTask = (info) => {
@@ -157,9 +199,16 @@ export default function StroopTask() {
     navigate('/');
   };
 
-  // Render phases
+  // Show loading while initializing
   if (phase === "setup") {
-    return <TaskSetup onComplete={startTask} config={STROOP_CONFIG} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading Stroop task...</p>
+        </div>
+      </div>
+    );
   }
 
   if (phase === "practice_complete") {

@@ -1,42 +1,46 @@
 // VisualSearchResult entity - handles data storage via API
+import { SessionContext } from '../utils/sessionContext';
+
 export class VisualSearchResult {
   static async create(data, shareData = false) {
     try {
+      // Enrich data with session information
+      const enrichedData = SessionContext.enrichResultData(data);
+      
       // Always store locally for individual results
       const existingResults = JSON.parse(localStorage.getItem('visualSearchResults') || '[]');
       const localData = {
-        ...data,
-        id: Date.now(),
-        timestamp: new Date().toISOString()
+        ...enrichedData,
+        id: Date.now()
       };
       existingResults.push(localData);
       localStorage.setItem('visualSearchResults', JSON.stringify(existingResults));
 
-      // Only send to API if user has opted to share
-      if (shareData) {
+      // Send to API if in session or user has opted to share
+      const inSession = SessionContext.isInSession();
+      const shouldShare = inSession || shareData;
+      
+      if (shouldShare) {
         const response = await fetch('/api/record', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(enrichedData)
         });
         
         if (response.ok) {
           console.log('Visual Search data shared with class successfully');
-          return { success: true, data, shared: true };
+          return { success: true, data: enrichedData, shared: true };
         } else {
-          // In development mode, this endpoint might not exist, which is expected
-          console.info(`API response: ${response.status} - This is expected in development mode`);
-          return { success: true, data, shared: false };
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
       } else {
         console.log('Visual Search data kept private (not shared with class)');
-        return { success: true, data, shared: false };
+        return { success: true, data: enrichedData, shared: false };
       }
     } catch (error) {
-      // In development, this may fail but we don't need to show errors
-      console.info('API not available in development mode:', error.message);
+      console.warn('Failed to save to API, data stored locally:', error.message);
       // Data is already stored locally above
       return { success: false, error: error.message, data };
     }

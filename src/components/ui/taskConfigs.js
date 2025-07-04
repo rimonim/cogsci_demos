@@ -181,8 +181,8 @@ export const FLANKER_COMPLETE_CONFIG = {
     };
   },
   downloadFields: [
-    "Student Name", "Student ID", "Trial", "Stimulus Type", "Stimulus Display", 
-    "Correct Response", "Participant Response", "Reaction Time (ms)", "Correct", "Session Start"
+    "student_name", "student_id", "trial_number", "stimulus_type", "stimulus_display", 
+    "correct_response", "participant_response", "reaction_time", "is_correct", "session_start_time"
   ]
 };
 
@@ -224,8 +224,8 @@ export const STROOP_COMPLETE_CONFIG = {
     };
   },
   downloadFields: [
-    "Student Name", "Student ID", "Trial", "Color", "Word", "Stimulus Type",
-    "Correct Response", "Participant Response", "Reaction Time (ms)", "Correct", "Session Start"
+    "student_name", "student_id", "trial_number", "stimulus_color", "stimulus_word", "stimulus_type",
+    "correct_response", "participant_response", "reaction_time", "is_correct", "session_start_time"
   ]
 };
 
@@ -238,50 +238,48 @@ export const VISUAL_SEARCH_COMPLETE_CONFIG = {
   gradientTo: "to-purple-50",
   showDetailedStats: true,
   calculateCustomStats: (results) => {
-    const targetPresentTrials = results.filter(r => r.target_present === true);
-    const targetAbsentTrials = results.filter(r => r.target_present === false);
+    // Group by search type
+    const colorPopoutTrials = results.filter(r => r.search_type === "color_popout");
+    const orientationPopoutTrials = results.filter(r => r.search_type === "orientation_popout");
+    const conjunctionTrials = results.filter(r => r.search_type === "conjunction");
     
-    const presentAccuracy = targetPresentTrials.length > 0 
-      ? (targetPresentTrials.filter(r => r.is_correct).length / targetPresentTrials.length) * 100 
+    // Calculate accuracy for each search type
+    const colorPopoutAccuracy = colorPopoutTrials.length > 0 
+      ? (colorPopoutTrials.filter(r => r.is_correct).length / colorPopoutTrials.length) * 100 
       : 0;
-    const absentAccuracy = targetAbsentTrials.length > 0 
-      ? (targetAbsentTrials.filter(r => r.is_correct).length / targetAbsentTrials.length) * 100 
+    const orientationPopoutAccuracy = orientationPopoutTrials.length > 0 
+      ? (orientationPopoutTrials.filter(r => r.is_correct).length / orientationPopoutTrials.length) * 100 
+      : 0;
+    const conjunctionAccuracy = conjunctionTrials.length > 0 
+      ? (conjunctionTrials.filter(r => r.is_correct).length / conjunctionTrials.length) * 100 
       : 0;
     
-    const presentRT = targetPresentTrials
+    // Calculate RT for each search type (correct trials only)
+    const colorPopoutRT = colorPopoutTrials
       .filter(r => r.is_correct && r.participant_response !== "timeout")
       .reduce((sum, r, _, arr) => sum + r.reaction_time / arr.length, 0);
     
-    const absentRT = targetAbsentTrials
+    const orientationPopoutRT = orientationPopoutTrials
       .filter(r => r.is_correct && r.participant_response !== "timeout")
       .reduce((sum, r, _, arr) => sum + r.reaction_time / arr.length, 0);
-
-    // Calculate by set size and search type if available
-    const setSize4 = results.filter(r => r.set_size === 4);
-    const setSize8 = results.filter(r => r.set_size === 8);
-    
-    const setSize4RT = setSize4
-      .filter(r => r.is_correct && r.participant_response !== "timeout")
-      .reduce((sum, r, _, arr) => sum + r.reaction_time / arr.length, 0);
-    
-    const setSize8RT = setSize8
+      
+    const conjunctionRT = conjunctionTrials
       .filter(r => r.is_correct && r.participant_response !== "timeout")
       .reduce((sum, r, _, arr) => sum + r.reaction_time / arr.length, 0);
 
     return {
-      target_present_accuracy: presentAccuracy,
-      target_absent_accuracy: absentAccuracy,
-      target_present_rt: presentRT,
-      target_absent_rt: absentRT,
-      set_size_4_rt: setSize4RT,
-      set_size_8_rt: setSize8RT,
-      search_slope: setSize8RT - setSize4RT
+      color_popout_accuracy: colorPopoutAccuracy,
+      color_popout_rt: colorPopoutRT,
+      orientation_popout_accuracy: orientationPopoutAccuracy,
+      orientation_popout_rt: orientationPopoutRT,
+      conjunction_accuracy: conjunctionAccuracy,
+      conjunction_rt: conjunctionRT
     };
   },
   downloadFields: [
-    "Student Name", "Student ID", "Trial", "Condition", "Set Size", "Target Present",
-    "Search Type", "Correct Response", "Participant Response", "Reaction Time (ms)", 
-    "Correct", "Session Start"
+    "student_name", "student_id", "trial_number", "search_type", "set_size", "target_present",
+    "correct_response", "participant_response", "reaction_time", 
+    "is_correct", "session_start_time"
   ]
 };
 
@@ -322,7 +320,7 @@ export const NBACK_COMPLETE_CONFIG = {
     };
   },
   downloadFields: [
-    "Student Name", "Student ID", "Trial", "Letter", "Is Target", "N-Back Level",
-    "Correct Response", "Participant Response", "Reaction Time (ms)", "Correct", "Session Start"
+    "student_name", "student_id", "trial_number", "stimulus_letter", "is_target", "n_back_level",
+    "correct_response", "participant_response", "reaction_time", "is_correct", "session_start_time"
   ]
 };
