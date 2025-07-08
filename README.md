@@ -13,6 +13,7 @@ A unified, robust platform for cognitive psychology experiments built with React
 
 ### Platform Features
 - **Session Management**: Instructor-created sessions with unique codes
+- **Instructor Authentication**: Password-protected access for session creation and management
 - **Results Dashboard**: Real-time participant data visualization
 - **Data Export**: Standardized CSV downloads with camel_case field names
 - **Responsive Design**: Modern UI with Tailwind CSS and unified components
@@ -25,9 +26,11 @@ A unified, robust platform for cognitive psychology experiments built with React
 The platform includes a comprehensive session-based system for classroom data collection:
 
 ### For Instructors:
-1. Create a session through the Session Manager by navigating to `[domain]/sessions`
-2. Share the generated session link with students
-3. Download session-specific CSV data for analysis
+1. **Login**: Access instructor features at `/login` using the configured password
+2. **Create Sessions**: Use the Session Manager at `/sessions` to create new data collection sessions
+3. **Share Links**: Provide the generated session link to students  
+4. **Monitor Results**: View real-time data at `/results` and download CSV exports
+5. **Session Management**: Bulk operations, cleanup, and storage monitoring
 
 ### For Students:
 1. Join a session via the instructor-provided link
@@ -184,7 +187,27 @@ binding = "RT_DB"
 id = "46389a6df4354ea3ac1909e7e03c37b6"  # Replace with your actual KV namespace ID
 ```
 
-### Step 3: Deploy Options
+### Step 3: Set Instructor Password (IMPORTANT)
+The platform requires a password for instructor access to session creation and management features. Set the password as an environment variable:
+
+**For Local Development:**
+```bash
+# Create a .env file in your project root
+echo "INSTRUCTOR_PASSWORD=your_secure_password_here" > .env
+```
+
+**For Cloudflare Pages Deployment:**
+1. Go to your Cloudflare Pages dashboard
+2. Select your project
+3. Go to Settings → Environment variables
+4. Add a new variable:
+   - **Name:** `INSTRUCTOR_PASSWORD`
+   - **Value:** Your secure password
+   - **Environment:** Production (and Preview if desired)
+
+> **Security Note:** Choose a strong password and never commit it to your repository. The password is used for all instructor access including session creation, results viewing, and data management.
+
+### Step 4: Deploy Options
 
 #### Option A: Manual Deployment (Quick Start)
 ```bash
@@ -250,20 +273,23 @@ After deployment, verify everything works:
 
 ## API Endpoints
 
-### Record Endpoints
+### Authentication
+- `POST /api/auth` - Instructor login (returns session token)
+
+### Record Endpoints  
 - `POST /api/record` - Save experiment data to KV storage
 - `GET /api/record` - Export all data as CSV
 
-### Session Endpoints
+### Session Endpoints (Require Authentication)
 - `POST /api/session` - Create a new session
+- `GET /api/session` - List all sessions  
+- `POST /api/session-management` - Advanced session operations (cleanup, bulk delete, monitoring)
+
+### Public Session Endpoints
 - `GET /api/session/{sessionId}` - Get session data
 - `GET /api/session/{sessionId}?format=csv` - Export session-specific data as CSV
-- `DELETE /api/session/{sessionId}` - Delete session data
-- `DELETE /api/record` - Clear all data (instructor reset)
-- `POST /api/session` - Create a new session for data collection
-- `GET /api/session` - Get list of available sessions
-- `GET /api/session/[sessionId]` - Get session data and results (with `?format=csv` option)
-- `DELETE /api/session/[sessionId]` - Clear data for a specific session
+
+> **Note:** Session creation and management endpoints require instructor authentication. Individual session data access is public to allow result sharing.
 
 ## Documentation
 
@@ -279,21 +305,6 @@ After deployment, verify everything works:
 3. **Ensure proper trial alignment** - always pass trial data to `handleResponse`
 4. **Test thoroughly** - verify accuracy calculations and display consistency
 5. **Update documentation** for any new features or changes
-
-### Bug Fix Protocol
-When modifying trial logic:
-1. Check that responses are recorded against the correct trial
-2. Verify display sizes remain consistent across all trial phases
-3. Test CSV exports have correct field mapping
-4. Ensure no memory leaks or infinite loops
-5. Validate accuracy calculations match expected results
-
-### Testing Checklist
-- [ ] Practice trials show correct accuracy feedback
-- [ ] Display sizes remain constant during fixation/stimulus transitions
-- [ ] CSV exports use camel_case field names
-- [ ] No browser crashes or freezes during extended use
-- [ ] Performance metrics calculate correctly
 
 ### For Instructors
 1. Create a session at `/sessions`

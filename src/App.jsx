@@ -15,6 +15,7 @@ const Results = lazy(() => import('./pages/Results'));
 const Instructions = lazy(() => import('./pages/Instructions'));
 const SessionJoin = lazy(() => import('./pages/SessionJoin'));
 const SessionManager = lazy(() => import('./components/SessionManager'));
+const InstructorLogin = lazy(() => import('./pages/InstructorLogin'));
 
 // Loading component for better UX during chunk loading
 const LoadingSpinner = () => (
@@ -31,6 +32,7 @@ function App() {
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<InstructorLogin />} />
         <Route path="/session/:sessionId" element={<SessionJoin />} />
         <Route path="/sessions" element={<SessionManager />} />
         <Route path="/flanker" element={<FlankerInstructions />} />

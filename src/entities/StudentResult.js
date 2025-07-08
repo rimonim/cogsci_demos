@@ -1,5 +1,6 @@
 // StudentResult entity - handles student-level data aggregation for optimized KV storage
 import { SessionContext } from '../utils/sessionContext';
+import { KVQuotaManager } from '../utils/kvQuotaManager';
 
 export class StudentResult {
   constructor() {
@@ -51,6 +52,12 @@ export class StudentResult {
         throw new Error('Missing session or student information');
       }
 
+      // Check quota status before submitting
+      const quotaStatus = await KVQuotaManager.getQuotaStatus();
+      if (!quotaStatus.healthy && quotaStatus.warnings.length > 0) {
+        console.warn('[StudentResult] Quota warnings detected:', quotaStatus.warnings);
+      }
+
       // Prepare student-level data payload
       const studentData = {
         session_id: sessionData.sessionId,
@@ -66,17 +73,21 @@ export class StudentResult {
 
       console.log(`[StudentResult] Submitting ${this.trials.length} trials for student ${studentInfo.studentId}`);
 
-      // Single API call for all student data
-      const response = await fetch('/api/record', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(studentData)
-      });
+      // Use quota manager for retry with fallback
+      const submitOperation = async (data) => {
+        return await fetch('/api/record', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+      };
 
-      if (response.ok) {
-        const result = await response.json();
+      const result = await KVQuotaManager.retryWithFallback(submitOperation, studentData);
+
+      if (result.success) {
+        const responseData = await result.result.json();
         console.log('[StudentResult] Data saved to cloud storage successfully');
         
         // Clear local storage after successful submission
@@ -86,11 +97,20 @@ export class StudentResult {
           success: true, 
           data: studentData,
           trials_count: this.trials.length,
-          student_key: result.student_key
+          student_key: responseData.student_key
+        };
+      } else if (result.fallback) {
+        // Data was saved to localStorage as fallback
+        console.warn('[StudentResult] Data saved to localStorage fallback due to quota limits');
+        return { 
+          success: false, 
+          fallback: true,
+          error: result.error,
+          trials_count: this.trials.length,
+          fallback_key: result.fallbackKey
         };
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
+        throw new Error(`Submission failed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.warn('[StudentResult] Failed to save to API, keeping in localStorage:', error.message);

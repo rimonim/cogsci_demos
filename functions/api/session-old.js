@@ -1,9 +1,7 @@
 // Cloudflare Pages Functions API handler for session management
 // POST /api/session - Create a new session
-// GET /api/session - List all sessions (for bulk management)
 // GET /api/session/{sessionId} - Get session info and data
 import { getLocalEnv } from './local-dev.js';
-import { verifyInstructorAuth } from './auth.js';
 
 // Helper to get the appropriate environment (real or mock)
 const getEnv = (env) => {
@@ -17,19 +15,6 @@ const getEnv = (env) => {
 
 export async function onRequestPost({ request, env }) {
   try {
-    // Verify instructor authentication for session creation
-    const authResult = verifyInstructorAuth(request, env);
-    if (!authResult.success) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: authResult.error,
-        requiresAuth: true
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    }
-
     // Debug request info
     console.log('Session creation request received');
     
@@ -126,13 +111,14 @@ export async function onRequestGet({ params, env, request }) {
     const environment = getEnv(env);
     
     // Check if this is a request for a specific session or all sessions
+    const url = new URL(request.url);
     const sessionId = params.sessionId;
     
     if (sessionId) {
-      // Handle specific session request
+      // Handle specific session request (existing logic)
       return await getSpecificSession(sessionId, environment);
     } else {
-      // Handle request for all sessions list (for bulk management)
+      // Handle request for all sessions list
       return await getAllSessions(environment);
     }
   } catch (error) {
@@ -169,30 +155,11 @@ async function getAllSessions(environment) {
           prefix: `session_${sessionData.sessionId}_student_` 
         });
         
-        // Also check legacy records for accurate count
-        const legacyKeys = await environment.RT_DB.list({ 
-          prefix: `session_${sessionData.sessionId}_result_` 
-        });
-        
-        const legacyParticipants = new Set();
-        for (const key of legacyKeys.keys) {
-          try {
-            const value = await environment.RT_DB.get(key.name);
-            if (value) {
-              const trial = JSON.parse(value);
-              if (trial.student_name) legacyParticipants.add(trial.student_name);
-            }
-          } catch (error) {
-            // Continue on error
-          }
-        }
-        
         sessions.push({
           ...sessionData,
           isExpired,
-          participantCount: studentKeys.keys.length + legacyParticipants.size,
-          studentRecords: studentKeys.keys.length,
-          legacyRecords: legacyKeys.keys.length
+          participantCount: studentKeys.keys.length,
+          studentKeys: studentKeys.keys.length // For bulk operations
         });
       } catch (error) {
         console.error(`Error processing session ${metaKey.name}:`, error);
@@ -225,7 +192,7 @@ async function getAllSessions(environment) {
   }
 }
 
-// Get specific session data
+// Get specific session (refactored from existing logic)
 async function getSpecificSession(sessionId, environment) {
   if (!sessionId) {
     return new Response(JSON.stringify({ 

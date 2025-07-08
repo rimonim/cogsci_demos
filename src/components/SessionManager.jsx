@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy, ExternalLink, Users, Calendar, Clock } from 'lucide-react';
+import { Copy, ExternalLink, Users, Calendar, Clock, BarChart3, Settings } from 'lucide-react';
+import { InstructorAuth } from '@/utils/instructorAuth';
 
 export default function SessionManager() {
   const [isCreating, setIsCreating] = useState(false);
@@ -26,19 +27,37 @@ export default function SessionManager() {
       return;
     }
 
+    // Check authentication
+    if (!InstructorAuth.isAuthenticated()) {
+      alert('Please log in to create sessions');
+      window.location.href = '/login';
+      return;
+    }
+
     setIsCreating(true);
     try {
       console.log('Creating session with data:', formData);
       
       const response = await fetch('/api/session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...InstructorAuth.getAuthHeaders()
+        },
         body: JSON.stringify(formData)
       });
 
       console.log('Session creation response status:', response.status);
       
       if (!response.ok) {
+        // Handle authentication errors
+        if (response.status === 401) {
+          alert('Session expired. Please log in again.');
+          InstructorAuth.logout();
+          window.location.href = '/login';
+          return;
+        }
+        
         // Try to get text response first to avoid JSON parsing errors
         const errorText = await response.text();
         console.error('Error response text:', errorText);
@@ -156,11 +175,42 @@ export default function SessionManager() {
                 Download Session Data (CSV)
               </Button>
               <Button 
+                onClick={() => window.location.href = `/results?session=${session.sessionId}`} 
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                View Results
+              </Button>
+              <Button 
                 onClick={() => setSession(null)} 
                 variant="outline"
               >
                 Create Another Session
               </Button>
+            </div>
+            
+            {/* Navigation to Management */}
+            <div className="border-t pt-4 mt-6">
+              <p className="text-sm text-slate-600 mb-3">Session Management</p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => window.location.href = '/results'} 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  All Results
+                </Button>
+                <Button 
+                  onClick={() => window.location.href = '/results'} 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Manage Sessions
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -224,6 +274,29 @@ export default function SessionManager() {
             >
               {isCreating ? 'Creating Session...' : 'Create Session'}
             </Button>
+          </div>
+          
+          {/* Navigation Links */}
+          <div className="border-t pt-4 mt-6">
+            <p className="text-sm text-slate-600 mb-3">Or manage existing sessions</p>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => window.location.href = '/results'} 
+                variant="outline"
+                className="flex items-center gap-2 flex-1"
+              >
+                <BarChart3 className="w-4 h-4" />
+                View All Results
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/results'} 
+                variant="outline"
+                className="flex items-center gap-2 flex-1"
+              >
+                <Settings className="w-4 h-4" />
+                Manage Sessions
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

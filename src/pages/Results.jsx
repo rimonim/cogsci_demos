@@ -2,13 +2,15 @@ import React, { useState, useEffect } from "react";
 import { FlankerResult } from "@/entities/FlankerResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Users, TrendingUp, Clock, Trash2 } from "lucide-react";
+import { Download, Users, TrendingUp, Clock, Trash2, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { clearAllTaskData } from "@/utils";
 import { SessionContext } from "@/utils/sessionContext";
+import { InstructorAuth } from "@/utils/instructorAuth";
 
 import ResultsSummary from "@/components/results/ResultsSummary";
 import ParticipantTable from "@/components/results/ParticipantTable.jsx";
+import SessionManagement from "@/components/SessionManagement.jsx";
 
 export default function Results() {
   const [results, setResults] = useState([]);
@@ -17,8 +19,15 @@ export default function Results() {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [availableSessions, setAvailableSessions] = useState([]);
   const [isSessionView, setIsSessionView] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
 
   useEffect(() => {
+    // Check authentication first
+    if (!InstructorAuth.isAuthenticated()) {
+      window.location.href = '/login';
+      return;
+    }
+
     // Try to get session ID from URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const sessionIdFromUrl = urlParams.get('session');
@@ -33,7 +42,11 @@ export default function Results() {
 
   const loadAvailableSessions = async () => {
     try {
-      const response = await fetch('/api/session');
+      const response = await fetch('/api/session', {
+        headers: {
+          ...InstructorAuth.getAuthHeaders()
+        }
+      });
       if (response.ok) {
         const sessions = await response.json();
         setAvailableSessions(sessions);
@@ -47,7 +60,11 @@ export default function Results() {
     try {
       // If we have a session ID, load from session API
       if (sessionId) {
-        const response = await fetch(`/api/session/${sessionId}`);
+        const response = await fetch(`/api/session/${sessionId}`, {
+          headers: {
+            ...InstructorAuth.getAuthHeaders()
+          }
+        });
         if (response.ok) {
           const sessionData = await response.json();
           setResults(sessionData.results || []);
@@ -166,7 +183,11 @@ export default function Results() {
     // If we're viewing a session, use session endpoint for CSV
     if (isSessionView && currentSessionId) {
       try {
-        const response = await fetch(`/api/session/${currentSessionId}?format=csv`);
+        const response = await fetch(`/api/session/${currentSessionId}?format=csv`, {
+          headers: {
+            ...InstructorAuth.getAuthHeaders()
+          }
+        });
         if (response.ok) {
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
@@ -263,7 +284,7 @@ export default function Results() {
             )}
           </div>
           <div className="flex gap-3">
-            {isSessionView && (
+            {!showManagement && isSessionView && (
               <Button
                 onClick={() => {
                   setIsSessionView(false);
@@ -282,23 +303,46 @@ export default function Results() {
               </Button>
             )}
             
-            <Button
-              onClick={handleClearAllData}
-              disabled={results.length === 0 || clearing}
-              variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {clearing ? 'Clearing...' : 'Clear All Data'}
-            </Button>
-            <Button
-              onClick={downloadAllResults}
-              disabled={results.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export {isSessionView ? 'Session' : 'All'} Data
-            </Button>
+            {!showManagement && (
+              <>
+                <Button
+                  onClick={() => setShowManagement(true)}
+                  variant="outline"
+                  className="text-slate-600"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Manage Sessions
+                </Button>
+                
+                <Button
+                  onClick={handleClearAllData}
+                  disabled={results.length === 0 || clearing}
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {clearing ? 'Clearing...' : 'Clear All Data'}
+                </Button>
+                <Button
+                  onClick={downloadAllResults}
+                  disabled={results.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export {isSessionView ? 'Session' : 'All'} Data
+                </Button>
+              </>
+            )}
+            
+            {showManagement && (
+              <Button
+                onClick={() => setShowManagement(false)}
+                variant="outline"
+                className="text-slate-600"
+              >
+                ← Back to Results
+              </Button>
+            )}
           </div>
         </div>
 
@@ -336,6 +380,13 @@ export default function Results() {
               </div>
             </CardContent>
           </Card>
+        ) : showManagement ? (
+          <SessionManagement 
+            onRefresh={() => {
+              loadResults();
+              loadAvailableSessions();
+            }}
+          />
         ) : (
           <div className="space-y-8">
             {/* Session selector for non-session view */}
@@ -372,6 +423,15 @@ export default function Results() {
             <ResultsSummary results={results} participants={participants} isSessionView={isSessionView} />
             <ParticipantTable participants={participants} isSessionView={isSessionView} sessionId={currentSessionId} />
           </div>
+        )}
+
+        {/* Session management component */}
+        {showManagement && (
+          <SessionManagement 
+            onClose={() => setShowManagement(false)} 
+            onSessionCreated={loadAvailableSessions}
+            onSessionDeleted={loadAvailableSessions}
+          />
         )}
       </div>
     </div>

@@ -1,13 +1,31 @@
-# Local Testing Guide for Session-Based System
+# Local Testing Guide for Session-Based System with Advanced Management
 
-This guide will help you test the session-based system locally before deploying to Cloudflare Pages.
+3. **Standalone workflow:**
+   - Direct task access without sessions (no student info required)
+   - Tasks start automatically with anonymous data
+   - Local data storage and download at task completion
+   - Individual task completion with personal results
+
+4. **Advanced Session Management:**ide will help you test the session-based system locally before deploying to Cloudflare Pages. The system now includes advanced session management, automatic cleanup, and graceful degradation when storage limits are reached.
 
 ## Requirements
 
 - **Node.js 20+** (required for Wrangler)
 - **npm**
+- **Environment variables** (for instructor authentication)
 
-## Installing Node.js 20+ on macOS
+## Quick Setup
+
+1. **Set up environment variables:**
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # The default instructor password is 'demo123' for local testing
+   # You can edit .env to change this if desired
+   ```
+
+2. **Install Node.js 20+ on macOS:**
 
 Since you're using macOS, here are simple ways to install Node.js 20:
 
@@ -45,7 +63,13 @@ npx wrangler pages dev dist
 
 ### What will work locally:
 
-1. **Session-based workflow:**
+1. **Instructor Authentication:**
+   - Login at `/login` using the password from your .env file (default: 'demo123')
+   - Session creation and management (requires login)
+   - Results viewing and CSV downloads (requires login)
+   - Automatic logout after 4 hours or manual logout
+
+2. **Session-based workflow:**
    - Creating sessions via the `/api/session` endpoint
    - Joining sessions via the SessionJoin component (enter student info once)
    - Automatic student info forwarding to tasks
@@ -53,15 +77,29 @@ npx wrangler pages dev dist
    - Viewing session-specific results
    - Downloading session CSV data
 
-2. **Standalone workflow:**
+3. **Standalone workflow:**
    - Direct task access without sessions (no student info required)
    - Tasks start automatically with anonymous data
    - Local data storage and download at task completion
    - Individual task completion with personal results
 
-3. **General features:**
+3. **Advanced Session Management:**
+   - Bulk session deletion and management
+   - Automatic expired session cleanup (48+ hour old sessions)
+   - Storage quota monitoring and warnings
+   - System health checks
+   - Graceful degradation when storage limits reached
+
+4. **Storage Optimization:**
+   - Per-student data aggregation (reduces KV writes by ~50x)
+   - Automatic fallback to localStorage when quotas exceeded
+   - Legacy data migration during cleanup operations
+   - Real-time storage usage monitoring
+
+5. **General features:**
    - Clearing session data
    - Task switching and data management
+   - Quota-aware data submission with retry logic
 
 ### What might have limitations:
 
@@ -148,17 +186,26 @@ This approach requires Cloudflare authentication but provides a more production-
 ### 1. Start the local development server
 
 ```bash
-npm run dev
+npm run build
+npx wrangler pages dev dist
 ```
 
-### 2. Test the instructor flow
+### 2. Test instructor authentication
 
-1. Navigate to `/sessions` in your browser
-2. Create a new session (e.g., "Test Session")
-3. Copy the session URL
+1. Navigate to your local site (usually `http://localhost:8788`)
+2. Click "Instructor Login" at the bottom of the home page
+3. Log in with the password from your .env file (default: 'demo123')
+4. Verify you see the instructor controls at the top of the home page
+5. Test logout functionality
+
+### 3. Test the instructor session flow
+
+1. Navigate to `/sessions` (should redirect to login if not authenticated)
+2. Create a new session (e.g., "Test Session", "flanker")
+3. Copy the session URL  
 4. Note the session ID for later use
 
-### 3. Test the student flow
+### 4. Test the student flow
 
 1. Open the session URL in a new browser window or incognito mode
 2. Enter student information and join the session (you'll only need to do this once)
@@ -201,4 +248,106 @@ When deploying to Cloudflare Pages:
 3. Bind the KV namespace to your Pages project as `RT_DB`
 4. All session data will be stored in your Cloudflare KV store
 
-Happy testing!
+## Testing Advanced Session Management Features
+
+The system now includes several advanced management features that can be tested locally:
+
+### 1. Session Management Dashboard
+
+1. Navigate to `/results` in your browser
+2. Click "Manage Sessions" to access the management dashboard
+3. The dashboard shows:
+   - System health status and KV operation responsiveness
+   - Storage usage estimates and quota warnings
+   - List of all sessions with expiration status
+   - Bulk selection and management tools
+
+### 2. Testing Automatic Cleanup
+
+1. From the Session Management dashboard, click "Preview Cleanup"
+2. The system will identify expired sessions (older than 48 hours)
+3. Click "Delete X Expired Sessions" to perform actual cleanup
+4. Verify that expired sessions are removed from the session list
+
+### 3. Testing Bulk Operations
+
+1. In the Session Management dashboard, select multiple sessions using checkboxes
+2. Use "Select All Expired" to quickly select expired sessions
+3. Click "Delete Selected" to perform bulk deletion
+4. Confirm the operation when prompted
+
+### 4. Testing Storage Quota Monitoring
+
+1. The dashboard automatically displays storage usage estimates
+2. Storage health is categorized as "healthy", "warning", or "critical"
+3. Recommendations are provided based on current usage patterns
+4. Test with multiple sessions and students to see quota projections
+
+### 5. Testing Graceful Degradation
+
+To test graceful degradation when storage limits are reached:
+
+1. The system automatically detects quota issues during data submission
+2. When limits are reached, data is saved to localStorage as fallback
+3. Users receive notification about degraded mode
+4. When storage becomes available, fallback data can be recovered
+
+### 6. Testing Health Checks
+
+The system performs automatic health checks on:
+- KV storage accessibility
+- Basic read/write operations
+- Response time monitoring
+- Error detection and reporting
+
+## Storage Optimization Notes
+
+The system now uses an optimized storage strategy to work within Cloudflare KV limits:
+
+### Per-Student Aggregation
+- **Before**: ~2,000 writes per 40-student classroom (50 trials × 40 students)
+- **After**: ~40 writes per 40-student classroom (1 write × 40 students)
+- **Improvement**: 50x reduction in KV write operations
+
+### Automatic Fallback
+- When KV quotas are exceeded, data automatically saves to localStorage
+- Users are notified about degraded mode but can continue working
+- Recovery tools help restore fallback data when storage becomes available
+
+### Legacy Compatibility
+- System supports both old per-trial and new per-student data formats
+- Cleanup operations migrate legacy data to new format
+- No data loss during transition
+
+### Quota Monitoring
+- Real-time storage usage estimation
+- Proactive warnings when approaching limits
+- Health status indicators with actionable recommendations
+
+## Navigation Between Features
+
+The system now provides seamless navigation between session creation, management, and results:
+
+### From Session Creation (/sessions)
+- **"View All Results"** → Navigate to `/results` to see all session data
+- **"Manage Sessions"** → Navigate to `/results` with management panel open
+- **"View Results"** → After creating a session, go directly to that session's results
+- **"Download Session Data (CSV)"** → Immediately download the new session's data
+
+### From Results Page (/results)
+- **"Manage Sessions"** → Opens the session management dashboard
+- **"Back to Results"** → Returns from management to results view
+- Individual session links → View specific session data
+
+### From Session Management Dashboard
+For each session, you can:
+- **Copy URL** (copy icon) → Copy the session join link to clipboard
+- **Download Data** (download icon) → Download session results as CSV
+- **View Results** (external link icon) → Open session-specific results page
+- **Bulk Download** → Download multiple selected sessions at once
+- **Bulk Delete** → Remove multiple sessions simultaneously
+
+### Session URLs
+- **Join URL**: `{domain}/session/{sessionId}` - For students to join
+- **Results URL**: `{domain}/results?session={sessionId}` - For viewing session data
+- **Management URL**: `{domain}/results` (then click "Manage Sessions")
