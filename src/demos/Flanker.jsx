@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FlankerResult } from "@/entities/FlankerResult";
+import { StudentResult } from "@/entities/StudentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +29,7 @@ export default function FlankerTask() {
   const [feedback, setFeedback] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [studentResult, setStudentResult] = useState(null);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -53,6 +54,11 @@ export default function FlankerTask() {
         });
       }
       setSessionStartTime(new Date().toISOString());
+      
+      // Initialize StudentResult for aggregated data collection
+      const result = StudentResult.create('flanker');
+      setStudentResult(result);
+      
       setIsLoading(false);
     };
 
@@ -125,20 +131,15 @@ export default function FlankerTask() {
         responseTime: result.reaction_time
       });
       
-      // Enhanced result object with session info if available
-      const enhancedResult = {
-        ...result,
-        student_name: studentInfo.name,
-        student_id: studentInfo.id,
+      // Enhanced result object with trial info
+      const trialData = {
+        trial_number: trialIndex + 1,
         stimulus_type: trial.type,
         stimulus_display: trial.display,
         correct_response: trial.correct,
         participant_response: result.response,
-        is_correct: isCorrect,
-        session_start_time: sessionStartTime,
-        task_type: 'flanker',
-        share_data: studentInfo.shareData,
-        ...(sessionId && { session_id: sessionId })
+        reaction_time: result.reaction_time,
+        is_correct: isCorrect
       };
 
       // Show feedback for practice trials
@@ -148,26 +149,40 @@ export default function FlankerTask() {
         
         console.log(`[FLANKER DEBUG] Setting feedback:`, feedbackObj);
         setFeedback(feedbackObj);
+      } else if (currentPhase === 'task' && studentResult) {
+        // Collect trial data for main task (don't submit individually)
+        studentResult.addTrial(trialData);
+        console.log(`[FLANKER DEBUG] Added trial ${trialIndex + 1} to collection. Total: ${studentResult.getTrialCount()}`);
       }
 
-      // Save to API for main task
-      if (currentPhase === 'task') {
-        try {
-          FlankerResult.create(enhancedResult, studentInfo.shareData);
-        } catch (error) {
-          console.error("Error saving result:", error);
-        }
-      }
-
-      return enhancedResult;
+      return { ...result, ...trialData };
     },
     
     onPhaseComplete: (completedPhase, phaseResults) => {
       console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
     },
     
-    onExperimentComplete: (mainResults, practiceResults) => {
-      console.log('Flanker experiment completed!', { mainResults, practiceResults });
+    onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('Flanker experiment completed!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length 
+      });
+      
+      // Submit all collected trial data as a single student record
+      if (studentResult && mainResults.length > 0) {
+        try {
+          console.log(`[FLANKER DEBUG] Submitting ${studentResult.getTrialCount()} trials for student`);
+          const submission = await studentResult.submit();
+          
+          if (submission.success) {
+            console.log('[FLANKER DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[FLANKER DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
+        } catch (error) {
+          console.error('[FLANKER DEBUG] Error during data submission:', error);
+        }
+      }
     }
   });
 

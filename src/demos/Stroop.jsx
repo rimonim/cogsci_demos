@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { StroopResult } from "@/entities/StroopResult";
+import { StudentResult } from "@/entities/StudentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -48,6 +48,7 @@ export default function StroopTask() {
   const [isSessionMode, setIsSessionMode] = useState(false);
   const [currentStimulus, setCurrentStimulus] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [studentResult, setStudentResult] = useState(null);
 
   const navigate = useNavigate();
 
@@ -92,44 +93,52 @@ export default function StroopTask() {
     onTrialEnd: (result, trial, trialIndex, currentPhase) => {
       const isCorrect = result.response === trial.correct;
       
-      // Enhanced result object
-      const enhancedResult = {
-        ...result,
-        student_name: studentInfo.name,
-        student_id: studentInfo.id,
+      // Enhanced result object with trial info
+      const trialData = {
+        trial_number: trialIndex + 1,
         stimulus_type: trial.type,
         stimulus_word: trial.word,
         stimulus_color: trial.color,
         correct_response: trial.correct,
         participant_response: result.response,
-        is_correct: isCorrect,
-        session_start_time: sessionStartTime,
-        task_type: 'stroop',
-        share_data: studentInfo.shareData,
-        // Include session data if available
-        ...(isSessionMode && window.sessionData && {
-          session_id: window.sessionData.sessionId
-        })
+        reaction_time: result.reaction_time,
+        is_correct: isCorrect
       };
 
-      // Save to API for main task
-      if (currentPhase === 'task') {
-        try {
-          StroopResult.create(enhancedResult, studentInfo.shareData);
-        } catch (error) {
-          console.error("Error saving result:", error);
-        }
+      // Collect trial data for main task (don't submit individually)
+      if (currentPhase === 'task' && studentResult) {
+        studentResult.addTrial(trialData);
+        console.log(`[STROOP DEBUG] Added trial ${trialIndex + 1} to collection. Total: ${studentResult.getTrialCount()}`);
       }
 
-      return enhancedResult;
+      return { ...result, ...trialData };
     },
     
     onPhaseComplete: (completedPhase, phaseResults) => {
       console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
     },
     
-    onExperimentComplete: (mainResults, practiceResults) => {
-      console.log('Stroop experiment completed!', { mainResults, practiceResults });
+    onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('Stroop experiment completed!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length 
+      });
+      
+      // Submit all collected trial data as a single student record
+      if (studentResult && mainResults.length > 0) {
+        try {
+          console.log(`[STROOP DEBUG] Submitting ${studentResult.getTrialCount()} trials for student`);
+          const submission = await studentResult.submit();
+          
+          if (submission.success) {
+            console.log('[STROOP DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[STROOP DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
+        } catch (error) {
+          console.error('[STROOP DEBUG] Error during data submission:', error);
+        }
+      }
     }
   });
 
@@ -148,6 +157,11 @@ export default function StroopTask() {
         setStudentInfo(sessionInfo);
         setIsSessionMode(true);
         setSessionStartTime(new Date().toISOString());
+        
+        // Initialize StudentResult for aggregated data collection
+        const result = StudentResult.create('stroop');
+        setStudentResult(result);
+        
         console.log('Session mode initialized for:', sessionStudentInfo.name);
       }
     } else {
@@ -155,6 +169,10 @@ export default function StroopTask() {
       console.log('No session data found, starting Stroop in standalone mode');
       setIsSessionMode(false);
       setSessionStartTime(new Date().toISOString());
+      
+      // Initialize StudentResult for standalone mode
+      const result = StudentResult.create('stroop');
+      setStudentResult(result);
     }
   }, [sessionId]);
 

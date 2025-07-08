@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { NBackResult } from "@/entities/NBackResult";
+import { StudentResult } from "@/entities/StudentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +27,7 @@ export default function NBackTask() {
   const [currentLetter, setCurrentLetter] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [studentResult, setStudentResult] = useState(null);
 
   const navigate = useNavigate();
 
@@ -151,22 +152,17 @@ export default function NBackTask() {
       console.log(`Trial ${trialIndex+1} - Letter: ${trial.letter}, isTarget: ${trial.isTarget}, ` +
                  `Response: ${userResponse}, Classification: ${responseType}, Correct: ${isCorrect}`);
       
-      // Enhanced result object
-      const enhancedResult = {
-        ...result,
-        student_name: studentInfo.name,
-        student_id: studentInfo.id,
+      // Enhanced result object with trial info
+      const trialData = {
         trial_number: trialIndex + 1,
         letter: trial.letter,
         is_target: trial.isTarget,
         n_back_level: trial.nBackLevel,
         correct_response: trial.correctResponse,
         participant_response: userResponse,
+        reaction_time: result.reaction_time,
         is_correct: isCorrect,
-        response_type: responseType, // Add signal detection classification
-        session_start_time: sessionStartTime,
-        task_type: 'nback',
-        share_data: studentInfo.shareData
+        response_type: responseType // Add signal detection classification
       };
 
       // Show feedback for practice trials (only after the first N_BACK_LEVEL trials)
@@ -193,26 +189,40 @@ export default function NBackTask() {
           feedbackText = pressedSpace ? 'False Alarm!' : 'Correct Rejection!';
         }
         setFeedback({ show: true, text: feedbackText, correct: isCorrect });
+      } else if (currentPhase === 'task' && studentResult) {
+        // Collect trial data for main task (don't submit individually)
+        studentResult.addTrial(trialData);
+        console.log(`[NBACK DEBUG] Added trial ${trialIndex + 1} to collection. Total: ${studentResult.getTrialCount()}`);
       }
 
-      // Save to API for main task
-      if (currentPhase === 'task') {
-        try {
-          NBackResult.create(enhancedResult, studentInfo.shareData);
-        } catch (error) {
-          console.error("Error saving result:", error);
-        }
-      }
-
-      return enhancedResult;
+      return { ...result, ...trialData };
     },
     
     onPhaseComplete: (completedPhase, phaseResults) => {
       console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
     },
     
-    onExperimentComplete: (mainResults, practiceResults) => {
-      console.log('N-Back experiment completed!', { mainResults, practiceResults });
+    onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('N-Back experiment completed!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length 
+      });
+      
+      // Submit all collected trial data as a single student record
+      if (studentResult && mainResults.length > 0) {
+        try {
+          console.log(`[NBACK DEBUG] Submitting ${studentResult.getTrialCount()} trials for student`);
+          const submission = await studentResult.submit();
+          
+          if (submission.success) {
+            console.log('[NBACK DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[NBACK DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
+        } catch (error) {
+          console.error('[NBACK DEBUG] Error during data submission:', error);
+        }
+      }
     }
   });
 
@@ -231,6 +241,11 @@ export default function NBackTask() {
         setStudentInfo(sessionInfo);
         setIsSessionMode(true);
         setSessionStartTime(new Date().toISOString());
+        
+        // Initialize StudentResult for aggregated data collection
+        const result = StudentResult.create('nback');
+        setStudentResult(result);
+        
         console.log('Session mode initialized for:', sessionStudentInfo.name);
       }
     } else {
@@ -238,6 +253,10 @@ export default function NBackTask() {
       console.log('No session data found, starting N-Back in standalone mode');
       setIsSessionMode(false);
       setSessionStartTime(new Date().toISOString());
+      
+      // Initialize StudentResult for standalone mode
+      const result = StudentResult.create('nback');
+      setStudentResult(result);
     }
   }, [sessionId]);
 

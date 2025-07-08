@@ -38,6 +38,11 @@ node --version
 
 The system has been enhanced to work locally by using a mock KV store. This allows you to test most functionality without deploying to Cloudflare.
 
+```bash
+npm run build
+npx wrangler pages dev dist
+```
+
 ### What will work locally:
 
 1. **Session-based workflow:**

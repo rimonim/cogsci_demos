@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { VisualSearchResult } from "@/entities/VisualSearchResult";
+import { StudentResult } from "@/entities/StudentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -126,6 +126,7 @@ export default function VisualSearchTask() {
   const [currentStimulus, setCurrentStimulus] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [studentResult, setStudentResult] = useState(null);
 
   const navigate = useNavigate();
 
@@ -162,45 +163,52 @@ export default function VisualSearchTask() {
     onTrialEnd: (result, trial, trialIndex, currentPhase) => {
       const isCorrect = result.response === trial.correctResponse;
       
-      // Enhanced result object
-      const sessionData = JSON.parse(sessionStorage.getItem('sessionData') || 'null');
-      const enhancedResult = {
-        ...result,
-        student_name: studentInfo.name,
-        student_id: studentInfo.id,
+      // Enhanced result object with trial info
+      const trialData = {
+        trial_number: trialIndex + 1,
         search_type: trial.condition, // Use search_type to match CSV config
         set_size: trial.setSize,
         target_present: trial.targetPresent,
         correct_response: trial.correctResponse,
         participant_response: result.response,
-        is_correct: isCorrect,
-        session_start_time: sessionStartTime,
-        task_type: 'visual_search',
-        share_data: studentInfo.shareData,
-        // Include session_id if in session mode
-        ...(sessionData && sessionData.session_id && {
-          session_id: sessionData.session_id
-        })
+        reaction_time: result.reaction_time,
+        is_correct: isCorrect
       };
 
-      // Save to API for main task
-      if (currentPhase === 'task') {
-        try {
-          VisualSearchResult.create(enhancedResult, studentInfo.shareData);
-        } catch (error) {
-          console.error("Error saving result:", error);
-        }
+      // Collect trial data for main task (don't submit individually)
+      if (currentPhase === 'task' && studentResult) {
+        studentResult.addTrial(trialData);
+        console.log(`[VISUAL_SEARCH DEBUG] Added trial ${trialIndex + 1} to collection. Total: ${studentResult.getTrialCount()}`);
       }
 
-      return enhancedResult;
+      return { ...result, ...trialData };
     },
     
     onPhaseComplete: (completedPhase, phaseResults) => {
       console.log(`${completedPhase} phase completed with ${phaseResults.length} trials`);
     },
     
-    onExperimentComplete: (mainResults, practiceResults) => {
-      console.log('Visual Search experiment completed!', { mainResults, practiceResults });
+    onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('Visual Search experiment completed!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length 
+      });
+      
+      // Submit all collected trial data as a single student record
+      if (studentResult && mainResults.length > 0) {
+        try {
+          console.log(`[VISUAL_SEARCH DEBUG] Submitting ${studentResult.getTrialCount()} trials for student`);
+          const submission = await studentResult.submit();
+          
+          if (submission.success) {
+            console.log('[VISUAL_SEARCH DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[VISUAL_SEARCH DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
+        } catch (error) {
+          console.error('[VISUAL_SEARCH DEBUG] Error during data submission:', error);
+        }
+      }
     }
   });
 
@@ -220,6 +228,11 @@ export default function VisualSearchTask() {
             shareData: sessionData.share_data !== false
           });
           setSessionStartTime(new Date().toISOString());
+          
+          // Initialize StudentResult for aggregated data collection
+          const result = StudentResult.create('visual_search');
+          setStudentResult(result);
+          
           setIsInitializing(false);
         } else {
           // Standalone mode: use defaults, no setup needed
@@ -230,6 +243,11 @@ export default function VisualSearchTask() {
             shareData: false
           });
           setSessionStartTime(new Date().toISOString());
+          
+          // Initialize StudentResult for standalone mode
+          const result = StudentResult.create('visual_search');
+          setStudentResult(result);
+          
           setIsInitializing(false);
         }
       } catch (error) {
@@ -241,6 +259,11 @@ export default function VisualSearchTask() {
           shareData: false
         });
         setSessionStartTime(new Date().toISOString());
+        
+        // Initialize StudentResult for fallback mode
+        const result = StudentResult.create('visual_search');
+        setStudentResult(result);
+        
         setIsInitializing(false);
       }
     };

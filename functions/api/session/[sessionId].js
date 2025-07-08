@@ -106,12 +106,76 @@ export async function onRequestGet({ params, env, request }) {
       });
     }
     
-    // Get all results for this session
-    const resultKeys = await environment.RT_DB.list({ prefix: `session_${sessionId}_result_` });
+    // Get all results for this session (both new student-level and legacy format)
+    const allKeys = await environment.RT_DB.list({ prefix: `session_${sessionId}_` });
+    const studentKeys = allKeys.keys.filter(key => key.name.includes('_student_'));
+    const legacyResultKeys = allKeys.keys.filter(key => key.name.includes('_result_'));
     
     // Prepare response based on format
     if (format === 'csv') {
-      if (resultKeys.keys.length === 0) {
+      const records = [];
+      
+      // Process student-level data (new format)
+      for (const key of studentKeys) {
+        const studentData = await environment.RT_DB.get(key.name);
+        if (studentData) {
+          try {
+            const parsed = typeof studentData === 'string' ? JSON.parse(studentData) : studentData;
+            
+            // Flatten student trials for CSV
+            if (parsed.trials && Array.isArray(parsed.trials)) {
+              parsed.trials.forEach(trial => {
+                records.push({
+                  session_id: sessionId,
+                  task_type: parsed.task_type || trial.task_type || 'unknown',
+                  student_name: parsed.student_info?.name || 'Unknown',
+                  student_id: parsed.student_info?.id || 'Unknown',
+                  trial_number: trial.trial_number || '',
+                  stimulus_type: trial.stimulus_type || '',
+                  stimulus_display: trial.stimulus_display || '',
+                  correct_response: trial.correct_response || '',
+                  participant_response: trial.participant_response || '',
+                  reaction_time_ms: trial.reaction_time || trial.reaction_time_ms || '',
+                  is_correct: trial.is_correct !== undefined ? trial.is_correct : '',
+                  session_start_time: parsed.summary?.session_start_time || trial.session_start_time || '',
+                  timestamp: trial.timestamp || parsed.last_updated || ''
+                });
+              });
+            }
+          } catch (error) {
+            console.error(`Error parsing student data ${key.name}:`, error);
+          }
+        }
+      }
+      
+      // Process legacy trial data for backward compatibility
+      for (const key of legacyResultKeys) {
+        const value = await environment.RT_DB.get(key.name);
+        if (value) {
+          try {
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+            records.push({
+              session_id: sessionId,
+              task_type: parsed.task_type || '',
+              student_name: parsed.student_name || '',
+              student_id: parsed.student_id || '',
+              trial_number: parsed.trial_number || '',
+              stimulus_type: parsed.stimulus_type || '',
+              stimulus_display: parsed.stimulus_display || '',
+              correct_response: parsed.correct_response || '',
+              participant_response: parsed.participant_response || '',
+              reaction_time_ms: parsed.reaction_time || parsed.reaction_time_ms || '',
+              is_correct: parsed.is_correct !== undefined ? parsed.is_correct : '',
+              session_start_time: parsed.session_start_time || '',
+              timestamp: parsed.timestamp || ''
+            });
+          } catch (error) {
+            console.error(`Error parsing legacy trial data ${key.name}:`, error);
+          }
+        }
+      }
+      
+      if (records.length === 0) {
         // Return empty CSV with headers
         const csvHeader = 'session_id,task_type,student_name,student_id,trial_number,stimulus_type,stimulus_display,correct_response,participant_response,reaction_time_ms,is_correct,session_start_time,timestamp\n';
         return new Response(csvHeader, {
@@ -121,21 +185,6 @@ export async function onRequestGet({ params, env, request }) {
             'Access-Control-Allow-Origin': '*',
           },
         });
-      }
-      
-      // Fetch all records for CSV
-      const records = [];
-      for (const key of resultKeys.keys) {
-        const value = await environment.RT_DB.get(key.name);
-        if (value) {
-          try {
-            const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
-            records.push(parsedValue);
-          } catch (error) {
-            console.error(`Error parsing record ${key.name}:`, error);
-            // Skip invalid records instead of failing completely
-          }
-        }
       }
       
       // Sort by timestamp
@@ -178,25 +227,57 @@ export async function onRequestGet({ params, env, request }) {
         },
       });
     } else {
-      // JSON format - return session data with results
+      // JSON format - return session data with results  
       const results = [];
+      const studentIds = new Set();
       
-      // Fetch all records for JSON response
-      for (const key of resultKeys.keys) {
-        const value = await environment.RT_DB.get(key.name);
-        if (value) {
+      // Process student-level data (new format)
+      for (const key of studentKeys) {
+        const studentData = await environment.RT_DB.get(key.name);
+        if (studentData) {
           try {
-            const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
-            results.push(parsedValue);
+            const parsed = typeof studentData === 'string' ? JSON.parse(studentData) : studentData;
+            
+            if (parsed.student_info?.id) {
+              studentIds.add(parsed.student_info.id);
+            }
+            
+            // Flatten student trials for compatibility
+            if (parsed.trials && Array.isArray(parsed.trials)) {
+              parsed.trials.forEach(trial => {
+                results.push({
+                  ...trial,
+                  student_name: parsed.student_info?.name || 'Unknown',
+                  student_id: parsed.student_info?.id || 'Unknown',
+                  session_id: sessionId,
+                  task_type: parsed.task_type || trial.task_type || 'unknown',
+                  timestamp: trial.timestamp || parsed.last_updated
+                });
+              });
+            }
           } catch (error) {
-            console.error(`Error parsing result ${key.name}:`, error);
-            // Skip invalid records instead of failing completely
+            console.error(`Error parsing student data ${key.name}:`, error);
           }
         }
       }
       
-      // Calculate some session stats
-      const studentIds = new Set(results.map(r => r.student_id).filter(Boolean));
+      // Process legacy trial data for backward compatibility
+      for (const key of legacyResultKeys) {
+        const value = await environment.RT_DB.get(key.name);
+        if (value) {
+          try {
+            const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+            results.push(parsed);
+            if (parsed.student_id) {
+              studentIds.add(parsed.student_id);
+            } else if (parsed.student_name) {
+              studentIds.add(parsed.student_name);
+            }
+          } catch (error) {
+            console.error(`Error parsing legacy result ${key.name}:`, error);
+          }
+        }
+      }
       
       // Make sure to send structured data in expected format for the client
       const response = {
@@ -263,13 +344,16 @@ export async function onRequestDelete({ params, env }) {
       });
     }
     
-    // Get all results for this session
-    const resultKeys = await env.RT_DB.list({ prefix: `session_${sessionId}_result_` });
+    // Get all data for this session (both student-level and legacy results)
+    const allKeys = await environment.RT_DB.list({ prefix: `session_${sessionId}_` });
+    const dataKeys = allKeys.keys.filter(key => 
+      key.name.includes('_student_') || key.name.includes('_result_')
+    );
     
-    // Delete all results
+    // Delete all data (but keep session metadata)
     let deletedCount = 0;
-    for (const key of resultKeys.keys) {
-      await env.RT_DB.delete(key.name);
+    for (const key of dataKeys) {
+      await environment.RT_DB.delete(key.name);
       deletedCount++;
     }
     

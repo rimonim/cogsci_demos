@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { VisualSearchResult } from "@/entities/VisualSearchResult";
+import { StudentResult } from "@/entities/StudentResult";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -126,6 +126,7 @@ export default function VisualSearchTask() {
   const [currentStimulus, setCurrentStimulus] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [studentResult, setStudentResult] = useState(null);
 
   const navigate = useNavigate();
 
