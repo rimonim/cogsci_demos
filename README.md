@@ -1,12 +1,6 @@
 # Cognitive Science Demonstrations Platform
 
-A unified, robust platform for cog   ├──    ├── NB   ├── NBackResult.js      # N-Back data model and API
-   ├── PosnerResult.js     # Posner cueing data model and API
-   └── VisualSearchResult.js # Visual search data model and APIk.jsx        # N-Back task using unified framework
-   ├── Posner.jsx       # Posner cueing task using unified framework
-   └── VisualSearch.jsx # Visual search task using unified frameworkack/           # N-Back task stimulus display
-   ├── posner/          # Posner cueing task stimulus display
-   └── results/         # Results dashboard componentstive psychology experiments built with React and deployed on Cloudflare Pages with serverless Functions for data collection.
+A unified, robust platform for cognitive psychology experiments built with React and deployed on Cloudflare Pages with serverless Functions for data collection.
 
 ## Features
 
@@ -61,6 +55,8 @@ All experiments use the standardized `useTrialManager` hook for:
 - **Standardized sequencing** across all experiments with consistent timing
 - **Automatic cleanup** and memory management preventing crashes
 - **Configurable parameters** for timeouts, delays, and stimulus duration
+- **Manual response control** for complex timing scenarios (e.g., Posner cueing with SOA delays)
+- **Flexible timing management** supporting both simple and multi-phase experimental designs
 
 ### Unified UI Components
 Consistent user experience through standardized components:
@@ -79,16 +75,22 @@ src/
 │   │   ├── PracticeComplete.jsx
 │   │   ├── TaskComplete.jsx
 │   │   └── taskConfigs.js
-│   ├── SessionManager.jsx  # Instructor session creation interface
+│   ├── SessionManagement.jsx  # Session management operations
+│   ├── SessionManager.jsx     # Instructor session creation interface
+│   ├── TaskSwitchDialog.jsx   # Task switching UI component
+│   ├── Thumbnails.jsx         # Task preview thumbnails
+│   ├── UniversityLogo.jsx     # Logo component
 │   ├── flanker/         # Flanker-specific stimulus display
 │   ├── stroop/          # Stroop-specific stimulus display  
 │   ├── visual-search/   # Visual search stimulus display
 │   ├── nback/           # N-Back task stimulus display
+│   ├── posner/          # Posner cueing task stimulus display
 │   └── results/         # Results dashboard components
 ├── demos/
 │   ├── Flanker.jsx      # Flanker task using unified framework
 │   ├── Stroop.jsx       # Stroop task using unified framework
 │   ├── NBack.jsx        # N-Back task using unified framework
+│   ├── Posner.jsx       # Posner cueing task using unified framework
 │   └── VisualSearch.jsx # Visual search task using unified framework
 ├── hooks/
 │   └── useTrialManager.js # Unified trial management framework
@@ -97,20 +99,30 @@ src/
 │   ├── StroopResult.js     # Stroop data model and API
 │   ├── NBackResult.js      # N-Back data model and API
 │   ├── PosnerResult.js     # Posner cueing data model and API
-│   └── VisualSearchResult.js # Visual search data model and API
+│   ├── VisualSearchResult.js # Visual search data model and API
+│   └── StudentResult.js    # Optimized batch data collection
 ├── pages/
 │   ├── Home.jsx         # Landing page with demo links
 │   ├── Results.jsx      # Instructor results dashboard
 │   ├── SessionJoin.jsx  # Student session join page
-│   └── *Instructions.jsx # Task-specific instruction pages
+│   ├── InstructorLogin.jsx # Instructor authentication page
+│   ├── FlankerInstructions.jsx # Flanker task instructions
+│   ├── StroopInstructions.jsx  # Stroop task instructions
+│   ├── VisualSearchInstructions.jsx # Visual search instructions
+│   ├── NBackInstructions.jsx   # N-Back task instructions
+│   └── PosnerInstructions.jsx  # Posner cueing instructions
 ├── utils/
-│   └── sessionContext.js  # Session management utility
+│   ├── sessionContext.js  # Session management utility
+│   ├── instructorAuth.js  # Authentication utilities
+│   └── kvQuotaManager.js  # KV storage optimization
 └── utils.js            # General utility functions
 
 functions/
 └── api/
+    ├── auth.js          # Authentication API endpoint
     ├── record.js        # Cloudflare Pages Functions API for result storage
     ├── session.js       # API for session creation and listing
+    ├── session-management.js # Advanced session operations
     └── session/
         └── [sessionId].js # API for session-specific operations
 ```
@@ -126,7 +138,17 @@ functions/
 ### Local Development
 ```bash
 npm install
+
+# Set up environment variables (optional for basic testing)
+cp .env.example .env
+
 npm run dev
+```
+
+**Alternative (using Node.js version management):**
+```bash
+# For automatic Node.js version management
+./start-dev.sh
 ```
 
 ### Building
@@ -138,6 +160,12 @@ npm run build
 ```bash
 npm run build
 npx wrangler pages dev dist
+```
+
+**Alternative (using Node.js version management):**
+```bash
+# For automatic Node.js version management  
+./start-wrangler.sh
 ```
 
 > **Important:** The session-based system requires Cloudflare KV storage to function correctly. Local development with `npm run dev` is suitable for UI testing only. For full functionality testing (sessions, data storage), use either:
@@ -309,6 +337,8 @@ After deployment, verify everything works:
 - **[Trial Framework](TRIAL_FRAMEWORK.md)** - Complete guide to the `useTrialManager` hook
 - **[Unified Components](UNIFIED_COMPONENTS.md)** - Documentation for standardized UI components
 - **[Setup Guide](SETUP.md)** - Development environment setup
+- **[Local Testing](LOCAL_TESTING.md)** - Local development and testing instructions
+- **[Local Development](START_LOCAL_DEV.md)** - Quick start guide for local development
 
 ## Contributing
 
