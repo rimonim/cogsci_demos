@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail, NBackThumbnail } from '@/components/Thumbnails';
+import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail, NBackThumbnail, PosnerThumbnail } from '@/components/Thumbnails';
 import UniversityLogo from '@/components/UniversityLogo';
 import { InstructorAuth } from '@/utils/instructorAuth';
 import { LogOut, Settings, Users } from 'lucide-react';
@@ -66,7 +66,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8 max-w-6xl mx-auto">
           <Card className="bg-white border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 overflow-hidden">
             <CardContent className="p-0">
               <div className="aspect-video sm:aspect-[4/3] lg:aspect-square xl:aspect-video">
@@ -125,6 +125,22 @@ export default function Home() {
                 <Link to="/nback">
                   <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
                     Start N-Back
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-slate-200 hover:border-green-300 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-video sm:aspect-[4/3] lg:aspect-square xl:aspect-video">
+                <PosnerThumbnail className="w-full h-full" />
+              </div>
+              <div className="p-4 lg:p-6">
+                <CardTitle className="text-lg lg:text-xl mb-3">Posner Cueing</CardTitle>
+                <Link to="/posner">
+                  <Button className="w-full bg-green-600 hover:bg-green-700">
+                    Start Posner
                   </Button>
                 </Link>
               </div>

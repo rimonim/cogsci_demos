@@ -1,6 +1,12 @@
 # Cognitive Science Demonstrations Platform
 
-A unified, robust platform for cognitive psychology experiments built with React and deployed on Cloudflare Pages with serverless Functions for data collection.
+A unified, robust platform for cog   ├──    ├── NB   ├── NBackResult.js      # N-Back data model and API
+   ├── PosnerResult.js     # Posner cueing data model and API
+   └── VisualSearchResult.js # Visual search data model and APIk.jsx        # N-Back task using unified framework
+   ├── Posner.jsx       # Posner cueing task using unified framework
+   └── VisualSearch.jsx # Visual search task using unified frameworkack/           # N-Back task stimulus display
+   ├── posner/          # Posner cueing task stimulus display
+   └── results/         # Results dashboard componentstive psychology experiments built with React and deployed on Cloudflare Pages with serverless Functions for data collection.
 
 ## Features
 
@@ -9,6 +15,7 @@ A unified, robust platform for cognitive psychology experiments built with React
 - **Stroop Task**: Color-word interference experiment  
 - **Visual Search Task**: Target detection in visual arrays with pop-out and conjunction searches
 - **N-Back Task**: Working memory assessment (2-back paradigm)
+- **Posner Cueing Task**: Spatial attention and covert orienting with endogenous and exogenous cues
 - **Unified Trial Management**: Robust, reusable trial sequencing framework
 
 ### Platform Features
@@ -89,6 +96,7 @@ src/
 │   ├── FlankerResult.js    # Flanker data model and API
 │   ├── StroopResult.js     # Stroop data model and API
 │   ├── NBackResult.js      # N-Back data model and API
+│   ├── PosnerResult.js     # Posner cueing data model and API
 │   └── VisualSearchResult.js # Visual search data model and API
 ├── pages/
 │   ├── Home.jsx         # Landing page with demo links
@@ -263,6 +271,11 @@ After deployment, verify everything works:
 **"Wrangler requires Node.js v20+" error:**
 - Update Node.js: `brew install node@20` (macOS) or download from nodejs.org
 
+**Authentication "500 Internal Server Error":**
+- This typically occurs in local development if environment variables aren't properly configured
+- In local development, the system uses a hardcoded password `demo123`
+- In production, ensure `INSTRUCTOR_PASSWORD` is set in Cloudflare environment variables
+
 **Build fails in GitHub Actions:**
 - Check that all dependencies are listed in `package.json`
 - Verify GitHub secrets are set correctly
@@ -335,11 +348,16 @@ All tasks export data with consistent camel_case field names:
 - `student_name`, `student_id`, `trial_number`, `stimulus_letter`, `is_target`, `n_back_level`
 - `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
 
+**Posner Cueing Task:**
+- `student_name`, `student_id`, `trial_number`, `cue_type`, `cue_validity`, `target_location`, `soa`
+- `target_present`, `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
 ### Performance Metrics
 - **Flanker**: Congruent vs. incongruent accuracy/RT, flanker effect
 - **Stroop**: Congruent vs. incongruent accuracy/RT, Stroop effect  
 - **Visual Search**: Color popout, orientation popout, and conjunction search performance
 - **N-Back**: Hit rate, false alarm rate, signal detection metrics
+- **Posner Cueing**: Valid vs. invalid cue effects, alerting effects, endogenous vs. exogenous attention
 
 ## Browser Compatibility
 

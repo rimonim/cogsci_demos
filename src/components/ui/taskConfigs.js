@@ -1,5 +1,5 @@
 // Task configurations for the unified TaskSetup component
-import { Play, Eye, Search, Brain } from "lucide-react";
+import { Play, Eye, Search, Brain, Target } from "lucide-react";
 
 export const FLANKER_CONFIG = {
   taskName: "Flanker Task Setup",
@@ -64,6 +64,26 @@ export const NBACK_CONFIG = {
   showInstructions: true,
   gradientFrom: "from-slate-50",
   gradientTo: "to-indigo-50"
+};
+
+export const POSNER_CONFIG = {
+  taskName: "Posner Cueing Task",
+  theme: "green",
+  icon: <Target className="w-6 h-6" />,
+  description: "Spatial attention and covert orienting experiment",
+  instructions: [
+    "Focus on the central fixation cross at all times",
+    "Watch for arrow cues or peripheral flashes",
+    "Respond to the target dot as quickly as possible",
+    "You'll start with practice trials, then the main task"
+  ],
+  keyBindings: [
+    { key: "Spacebar", description: "when you see the target dot" }
+  ],
+  buttonText: "Start Practice Trials",
+  showInstructions: true,
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-green-50"
 };
 
 // PracticeComplete configurations
@@ -140,6 +160,60 @@ export const NBACK_PRACTICE_CONFIG = {
   gradientTo: "to-indigo-50",
   accuracyWarningThreshold: 60,
   lowAccuracyMessage: "The n-back task is very challenging - don't worry if your accuracy was low! Focus on identifying when the current letter is the same as 2 trials back."
+};
+
+export const POSNER_PRACTICE_CONFIG = {
+  taskName: "Posner Cueing Task",
+  theme: "green",
+  icon: <Target className="w-6 h-6" />,
+  title: "Practice Complete!",
+  description: "Great job! Here are your reaction times:",
+  buttonText: "Continue to Main Task",
+  showInstructions: false,
+  showStats: true,
+  reminders: [
+    "Keep your eyes on the central cross",
+    "Press SPACEBAR when you see the target dot",
+    "Respond as quickly as possible"
+  ],
+  keyBindings: [
+    { key: "Spacebar", description: "when you see the target dot" }
+  ],
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-green-50",
+  showAccuracy: false, // Don't show accuracy for Posner task
+  calculateStats: (results) => {
+    if (!results || results.length === 0) return { validCuedRT: null, invalidCuedRT: null, neutralRT: null, trialsResponded: 0 };
+    
+    // Only include target trials with responses (not timeouts)
+    const targetTrials = results.filter(r => r.targetPresent && r.response === 'space' && r.reaction_time > 0);
+    
+    const validCuedTrials = targetTrials.filter(r => r.cueValidity === 'valid');
+    const invalidCuedTrials = targetTrials.filter(r => r.cueValidity === 'invalid');
+    const neutralTrials = targetTrials.filter(r => r.cueValidity === 'neutral');
+    
+    console.log('[POSNER STATS DEBUG] Target trials:', {
+      total: targetTrials.length,
+      valid: validCuedTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType })),
+      invalid: invalidCuedTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType })),
+      neutral: neutralTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType }))
+    });
+    
+    const validCuedRT = validCuedTrials.length > 0 ? 
+      Math.round(validCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / validCuedTrials.length) : null;
+    const invalidCuedRT = invalidCuedTrials.length > 0 ? 
+      Math.round(invalidCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / invalidCuedTrials.length) : null;
+    const neutralRT = neutralTrials.length > 0 ? 
+      Math.round(neutralTrials.reduce((sum, r) => sum + r.reaction_time, 0) / neutralTrials.length) : null;
+    
+    return {
+      validCuedRT,
+      invalidCuedRT,
+      neutralRT,
+      trialsResponded: targetTrials.length,
+      totalTargets: results.filter(r => r.targetPresent).length
+    };
+  }
 };
 
 // TaskComplete configurations
@@ -322,5 +396,68 @@ export const NBACK_COMPLETE_CONFIG = {
   downloadFields: [
     "student_name", "student_id", "trial_number", "stimulus_letter", "is_target", "n_back_level",
     "correct_response", "participant_response", "reaction_time", "is_correct", "session_start_time"
+  ]
+};
+
+export const POSNER_COMPLETE_CONFIG = {
+  taskName: "Posner Cueing Task",
+  theme: "green",
+  icon: <Target className="w-6 h-6" />,
+  title: "Task Complete!",
+  description: "Excellent work! Here are your reaction times by cue condition:",
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-green-50",
+  showDetailedStats: true,
+  showAccuracy: false, // Don't show accuracy for Posner task
+  calculateCustomStats: (results) => {
+    if (!results || results.length === 0) return {};
+    
+    // Only include target trials with valid responses
+    const targetTrials = results.filter(r => r.targetPresent && r.response === 'space' && r.reaction_time > 0);
+    
+    const validCuedTrials = targetTrials.filter(r => r.cueValidity === 'valid');
+    const invalidCuedTrials = targetTrials.filter(r => r.cueValidity === 'invalid');
+    const neutralTrials = targetTrials.filter(r => r.cueValidity === 'neutral');
+    
+    const validCuedRT = validCuedTrials.length > 0 ? 
+      validCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / validCuedTrials.length : null;
+    const invalidCuedRT = invalidCuedTrials.length > 0 ? 
+      invalidCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / invalidCuedTrials.length : null;
+    const neutralRT = neutralTrials.length > 0 ? 
+      neutralTrials.reduce((sum, r) => sum + r.reaction_time, 0) / neutralTrials.length : null;
+    
+    // Calculate cueing effects (only if we have the necessary data)
+    const validityEffect = (invalidCuedRT !== null && validCuedRT !== null) ? invalidCuedRT - validCuedRT : null;
+    const alertingEffect = (neutralRT !== null && validCuedRT !== null) ? neutralRT - validCuedRT : null;
+    
+    // Group by SOA for additional analysis
+    const soa50Trials = targetTrials.filter(r => r.soa === 50);
+    const soa150Trials = targetTrials.filter(r => r.soa === 150);
+    const soa300Trials = targetTrials.filter(r => r.soa === 300);
+    const soa500Trials = targetTrials.filter(r => r.soa === 500);
+    
+    const soa50RT = soa50Trials.length > 0 ? soa50Trials.reduce((sum, r) => sum + r.reaction_time, 0) / soa50Trials.length : null;
+    const soa150RT = soa150Trials.length > 0 ? soa150Trials.reduce((sum, r) => sum + r.reaction_time, 0) / soa150Trials.length : null;
+    const soa300RT = soa300Trials.length > 0 ? soa300Trials.reduce((sum, r) => sum + r.reaction_time, 0) / soa300Trials.length : null;
+    const soa500RT = soa500Trials.length > 0 ? soa500Trials.reduce((sum, r) => sum + r.reaction_time, 0) / soa500Trials.length : null;
+
+    return {
+      valid_cued_rt: validCuedRT !== null ? Math.round(validCuedRT) : null,
+      invalid_cued_rt: invalidCuedRT !== null ? Math.round(invalidCuedRT) : null,
+      neutral_rt: neutralRT !== null ? Math.round(neutralRT) : null,
+      validity_effect: validityEffect !== null ? Math.round(validityEffect) : null,
+      alerting_effect: alertingEffect !== null ? Math.round(alertingEffect) : null,
+      soa_50ms_rt: soa50RT !== null ? Math.round(soa50RT) : null,
+      soa_150ms_rt: soa150RT !== null ? Math.round(soa150RT) : null,
+      soa_300ms_rt: soa300RT !== null ? Math.round(soa300RT) : null,
+      soa_500ms_rt: soa500RT !== null ? Math.round(soa500RT) : null,
+      trials_responded: targetTrials.length,
+      total_targets: results.filter(r => r.targetPresent).length
+    };
+  },
+  downloadFields: [
+    "student_name", "student_id", "trial_number", "cueType", "cueValidity", "targetLocation", 
+    "soa", "targetPresent", "correctResponse", "response", "reaction_time", 
+    "is_correct", "session_start_time"
   ]
 };

@@ -107,6 +107,17 @@ npx wrangler pages dev dist
 2. JSON parsing for complex objects might sometimes fail
 3. Session creation might occasionally have issues with response parsing
 
+## Authentication Testing
+
+The instructor authentication system is now working correctly in local development:
+
+- **Default password**: `demo123` (can be changed in production via environment variables)
+- **Login page**: Navigate to `/login` or click "Instructor Login" on the home page
+- **Session duration**: 4 hours (automatically logs out after this time)
+- **Protected features**: Session creation, session management, results viewing, CSV downloads
+
+**Note**: The authentication system uses a hardcoded default password in local development since Cloudflare Workers don't have access to `process.env`. In production deployment, set the `INSTRUCTOR_PASSWORD` environment variable in your Cloudflare Pages dashboard.
+
 ## Common Issues and Troubleshooting
 
 ### "Error creating session: Failed to execute 'json' on 'Response': Unexpected end of JSON input"

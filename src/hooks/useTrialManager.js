@@ -12,6 +12,7 @@ export function useTrialManager({
   fixationDelay = 500,
   showFixation = true,
   stimulusDuration = null, // Duration to show stimulus before blanking (but still allowing responses)
+  manualResponseControl = false, // If true, task handles its own response timing and timeouts
   onTrialStart,
   onTrialEnd,
   onPhaseComplete,
@@ -102,8 +103,43 @@ export function useTrialManager({
         setShowingFixation(false);
         setTrialStartTime(Date.now());
         setShowStimulus(true);
-        setAwaitingResponse(true);
+        
+        // Only auto-manage responses if not in manual mode
+        if (!manualResponseControl) {
+          setAwaitingResponse(true);
 
+          // If stimulusDuration is set, hide stimulus after that time (but continue to accept responses)
+          if (stimulusDuration) {
+            const hideStimTimeout = setTimeout(() => {
+              // Only hide the stimulus, keep accepting responses
+              setShowStimulus(false);
+            }, stimulusDuration);
+            
+            timeoutsRef.current.push(hideStimTimeout);
+          }
+
+          // Response timeout
+          const responseTimeoutId = setTimeout(() => {
+            if (awaitingResponseRef.current) {
+              handleResponse('timeout', Date.now());
+            }
+          }, responseTimeout);
+
+          timeoutsRef.current.push(responseTimeoutId);
+        }
+      }, fixationDelay);
+
+      timeoutsRef.current.push(fixationTimeout);
+    } else {
+      // No fixation - show stimulus immediately
+      setShowingFixation(false);
+      setTrialStartTime(Date.now());
+      setShowStimulus(true);
+      
+      // Only auto-manage responses if not in manual mode
+      if (!manualResponseControl) {
+        setAwaitingResponse(true);
+        
         // If stimulusDuration is set, hide stimulus after that time (but continue to accept responses)
         if (stimulusDuration) {
           const hideStimTimeout = setTimeout(() => {
@@ -122,36 +158,9 @@ export function useTrialManager({
         }, responseTimeout);
 
         timeoutsRef.current.push(responseTimeoutId);
-      }, fixationDelay);
-
-      timeoutsRef.current.push(fixationTimeout);
-    } else {
-      // No fixation - show stimulus immediately
-      setShowingFixation(false);
-      setTrialStartTime(Date.now());
-      setShowStimulus(true);
-      setAwaitingResponse(true);
-      
-      // If stimulusDuration is set, hide stimulus after that time (but continue to accept responses)
-      if (stimulusDuration) {
-        const hideStimTimeout = setTimeout(() => {
-          // Only hide the stimulus, keep accepting responses
-          setShowStimulus(false);
-        }, stimulusDuration);
-        
-        timeoutsRef.current.push(hideStimTimeout);
       }
-
-      // Response timeout
-      const responseTimeoutId = setTimeout(() => {
-        if (awaitingResponseRef.current) {
-          handleResponse('timeout', Date.now());
-        }
-      }, responseTimeout);
-
-      timeoutsRef.current.push(responseTimeoutId);
     }
-  }, [getCurrentSequence, onTrialStart, responseTimeout, fixationDelay, showFixation]);
+  }, [getCurrentSequence, onTrialStart, responseTimeout, fixationDelay, showFixation, manualResponseControl, stimulusDuration]);
 
   // Handle response
   const handleResponse = useCallback((response, reactionTime, trialData = null) => {
@@ -258,6 +267,19 @@ export function useTrialManager({
     }
   }, [phase, cleanup]);
 
+  // Manual control functions for complex tasks
+  const startAcceptingResponses = useCallback(() => {
+    if (manualResponseControl) {
+      setAwaitingResponse(true);
+    }
+  }, [manualResponseControl]);
+
+  const stopAcceptingResponses = useCallback(() => {
+    if (manualResponseControl) {
+      setAwaitingResponse(false);
+    }
+  }, [manualResponseControl]);
+
   return {
     // State
     phase,
@@ -273,6 +295,10 @@ export function useTrialManager({
     startPractice,
     startMainTask,
     handleResponse,
+    
+    // Manual control (for complex timing scenarios)
+    startAcceptingResponses,
+    stopAcceptingResponses,
     
     // Utilities
     getCurrentTrial,

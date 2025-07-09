@@ -51,7 +51,7 @@ functions/
    - Use the `useTrialManager` hook for trial management across tasks.
    - Refine existing high-level components if needed, rather than creating new ones.
 2. For task-specific components, ensure they are modular and can be easily integrated with the unified framework.
-3. UI should remain consistent across tasks.
+3. UI should remain consistent across tasks. Task instructions should be concise, following the same style for all tasks.
 4. KV storage should be optimized for use with Cloudflare Pages free tier limits:
     - 100,000 reads per day
     - 1,000 writes per day to different keys

@@ -81,18 +81,25 @@ export default function PracticeComplete({
   // Calculate performance statistics
   let accuracy = 0;
   let avgRT = 0;
+  let customStats = null;
   let showLowAccuracyWarning = false;
 
   if (results && results.length > 0 && taskConfig.showStats) {
-    const correctResponses = results.filter(r => r.is_correct);
-    accuracy = (correctResponses.length / results.length) * 100;
-    
-    const validRTs = correctResponses.filter(r => r.participant_response !== "timeout" && r.reaction_time > 0);
-    if (validRTs.length > 0) {
-      avgRT = validRTs.reduce((sum, r) => sum + r.reaction_time, 0) / validRTs.length;
+    // Check if there's a custom stats calculator
+    if (taskConfig.calculateStats) {
+      customStats = taskConfig.calculateStats(results);
+    } else {
+      // Default stats calculation
+      const correctResponses = results.filter(r => r.is_correct);
+      accuracy = (correctResponses.length / results.length) * 100;
+      
+      const validRTs = correctResponses.filter(r => r.participant_response !== "timeout" && r.reaction_time > 0);
+      if (validRTs.length > 0) {
+        avgRT = validRTs.reduce((sum, r) => sum + r.reaction_time, 0) / validRTs.length;
+      }
+      
+      showLowAccuracyWarning = accuracy < taskConfig.accuracyWarningThreshold;
     }
-    
-    showLowAccuracyWarning = accuracy < taskConfig.accuracyWarningThreshold;
   }
 
   // Handle both callback styles for backward compatibility
@@ -122,22 +129,63 @@ export default function PracticeComplete({
         <CardContent className="space-y-6">
           {/* Performance Statistics */}
           {taskConfig.showStats && results && results.length > 0 && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center border border-emerald-200">
-                <Target className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-emerald-800">
-                  {accuracy.toFixed(1)}%
+            <div>
+              {customStats ? (
+                /* Custom stats for tasks like Posner */
+                <div className="space-y-3">
+                  {(customStats.validCuedRT !== undefined || customStats.invalidCuedRT !== undefined || customStats.neutralRT !== undefined) && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className={`rounded-lg p-3 text-center border ${currentTheme.card}`}>
+                        <Clock className={`w-5 h-5 ${currentTheme.icon} mx-auto mb-1`} />
+                        <div className={`text-lg font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
+                          {customStats.validCuedRT !== null ? `${customStats.validCuedRT}ms` : 'N/A'}
+                        </div>
+                        <div className={`text-xs ${currentTheme.icon}`}>Valid Cued</div>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center border ${currentTheme.card}`}>
+                        <Clock className={`w-5 h-5 ${currentTheme.icon} mx-auto mb-1`} />
+                        <div className={`text-lg font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
+                          {customStats.invalidCuedRT !== null ? `${customStats.invalidCuedRT}ms` : 'N/A'}
+                        </div>
+                        <div className={`text-xs ${currentTheme.icon}`}>Invalid Cued</div>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center border ${currentTheme.card}`}>
+                        <Clock className={`w-5 h-5 ${currentTheme.icon} mx-auto mb-1`} />
+                        <div className={`text-lg font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
+                          {customStats.neutralRT !== null ? `${customStats.neutralRT}ms` : 'N/A'}
+                        </div>
+                        <div className={`text-xs ${currentTheme.icon}`}>Neutral</div>
+                      </div>
+                    </div>
+                  )}
+                  {customStats.trialsResponded !== undefined && (
+                    <div className="text-center text-sm text-slate-600">
+                      Responded to {customStats.trialsResponded} out of {customStats.totalTargets} targets
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-emerald-600">Accuracy</div>
-              </div>
-              
-              <div className={`rounded-lg p-4 text-center border ${currentTheme.card}`}>
-                <Clock className={`w-6 h-6 ${currentTheme.icon} mx-auto mb-2`} />
-                <div className={`text-2xl font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
-                  {avgRT > 0 ? avgRT.toFixed(0) : '0'}ms
+              ) : (
+                /* Default stats display */
+                <div className="grid grid-cols-2 gap-4">
+                  {taskConfig.showAccuracy !== false && (
+                    <div className="bg-emerald-50 rounded-lg p-4 text-center border border-emerald-200">
+                      <Target className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-emerald-800">
+                        {accuracy.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-emerald-600">Accuracy</div>
+                    </div>
+                  )}
+                  
+                  <div className={`rounded-lg p-4 text-center border ${currentTheme.card} ${taskConfig.showAccuracy === false ? 'col-span-2' : ''}`}>
+                    <Clock className={`w-6 h-6 ${currentTheme.icon} mx-auto mb-2`} />
+                    <div className={`text-2xl font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
+                      {avgRT > 0 ? avgRT.toFixed(0) : '0'}ms
+                    </div>
+                    <div className={`text-sm ${currentTheme.icon}`}>Avg Response Time</div>
+                  </div>
                 </div>
-                <div className={`text-sm ${currentTheme.icon}`}>Avg Response Time</div>
-              </div>
+              )}
             </div>
           )}
 
@@ -165,7 +213,7 @@ export default function PracticeComplete({
           )}
 
           {/* Low Accuracy Warning */}
-          {showLowAccuracyWarning && (
+          {showLowAccuracyWarning && taskConfig.showAccuracy !== false && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
                 <strong>Tip:</strong> {taskConfig.lowAccuracyMessage}

@@ -70,8 +70,8 @@ export default function TaskComplete({ results, studentInfo, config }) {
   const accuracy = (correctResponses / results.length) * 100;
   const avgRT = results.length > 0 
     ? results
-        .filter(r => r.is_correct && r.participant_response !== "timeout")
-        .reduce((sum, r) => sum + r.reaction_time, 0) / correctResponses
+        .filter(r => r.is_correct && r.response !== "timeout")
+        .reduce((sum, r) => sum + r.reaction_time, 0) / Math.max(1, results.filter(r => r.is_correct && r.response !== "timeout").length)
     : 0;
 
   // Calculate custom statistics if provided
@@ -90,10 +90,11 @@ export default function TaskComplete({ results, studentInfo, config }) {
           // Get the value for this field from the result object
           let value = r[field];
           
-          // Handle special cases and fallbacks
-          if (field === 'student_name') value = value || studentInfo?.name || 'Unknown';
-          if (field === 'student_id') value = value || studentInfo?.id || 'Unknown';
-          if (field === 'session_start_time') value = value || r.session_start || new Date().toISOString();
+          // Handle special field mappings
+          if (field === 'student_name') value = r.name || studentInfo?.name || 'Unknown';
+          if (field === 'student_id') value = r.id || studentInfo?.id || 'Unknown';
+          if (field === 'session_start_time') value = r.sessionStartTime || r.session_start || new Date().toISOString();
+          if (field === 'is_correct') value = r.correct !== undefined ? r.correct : r.is_correct;
           
           // Convert boolean to string
           if (typeof value === 'boolean') return value.toString();
@@ -144,51 +145,80 @@ export default function TaskComplete({ results, studentInfo, config }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                <div className="text-3xl font-bold text-emerald-800">
-                  {accuracy.toFixed(1)}%
+            {config.showAccuracy === false ? (
+              /* For tasks like Posner where accuracy isn't meaningful */
+              <div className="text-center">
+                <div className={`inline-block p-6 rounded-lg border ${currentTheme.card}`}>
+                  <div className={`text-4xl font-bold ${currentTheme.accent.replace('-600', '-800')}`}>
+                    {avgRT > 0 ? avgRT.toFixed(0) : '0'}ms
+                  </div>
+                  <div className={`text-lg ${currentTheme.icon}`}>Average Response Time</div>
                 </div>
-                <div className="text-sm text-emerald-600">Overall Accuracy</div>
-              </div>
-              
-              <div className={`text-center p-4 rounded-lg border ${currentTheme.card}`}>
-                <div className={`text-3xl font-bold ${currentTheme.accent.replace('-600', '-800')}`}>
-                  {avgRT > 0 ? avgRT.toFixed(0) : '0'}ms
+                <div className="mt-4 text-sm text-slate-600">
+                  Completed {results.length} trials
                 </div>
-                <div className={`text-sm ${currentTheme.icon}`}>Average Response Time</div>
               </div>
-              
-              <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="text-3xl font-bold text-slate-800">
-                  {results.length}
+            ) : (
+              /* Default layout with accuracy */
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <div className="text-3xl font-bold text-emerald-800">
+                    {accuracy.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-emerald-600">Overall Accuracy</div>
                 </div>
-                <div className="text-sm text-slate-600">Total Trials</div>
+                
+                <div className={`text-center p-4 rounded-lg border ${currentTheme.card}`}>
+                  <div className={`text-3xl font-bold ${currentTheme.accent.replace('-600', '-800')}`}>
+                    {avgRT > 0 ? avgRT.toFixed(0) : '0'}ms
+                  </div>
+                  <div className={`text-sm ${currentTheme.icon}`}>Average Response Time</div>
+                </div>
+                
+                <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="text-3xl font-bold text-slate-800">
+                    {results.length}
+                  </div>
+                  <div className="text-sm text-slate-600">Total Trials</div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Custom Statistics */}
             {customStats && taskConfig.showDetailedStats && (
               <div className="mt-6 pt-6 border-t border-slate-200">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Detailed Analysis</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(customStats).map(([key, value]) => (
-                    <div key={key} className="bg-slate-50 rounded-lg p-4">
-                      <div className="text-xl font-bold text-slate-800">
-                        {typeof value === 'number' ? 
-                          (key.includes('hits') || key.includes('misses') || key.includes('alarms') || key.includes('rejections') ? 
-                            Math.round(value) : 
-                            value.toFixed(value > 10 ? 0 : 1)) 
-                          : value}
-                        {typeof value === 'number' && key.toLowerCase().includes('time') ? 'ms' : ''}
-                        {typeof value === 'number' && key.toLowerCase().includes('accuracy') ? '%' : ''}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(customStats).map(([key, value]) => {
+                    // Skip showing certain internal fields
+                    if (key.includes('trials_') || key.includes('total_')) return null;
+                    
+                    return (
+                      <div key={key} className="bg-slate-50 rounded-lg p-4">
+                        <div className="text-xl font-bold text-slate-800">
+                          {typeof value === 'number' ? 
+                            (key.includes('hits') || key.includes('misses') || key.includes('alarms') || key.includes('rejections') ? 
+                              Math.round(value) : 
+                              value.toFixed(value > 10 ? 0 : 1)) 
+                            : value}
+                          {typeof value === 'number' && (key.toLowerCase().includes('time') || key.toLowerCase().includes('rt')) ? 'ms' : ''}
+                          {typeof value === 'number' && key.toLowerCase().includes('accuracy') ? '%' : ''}
+                          {typeof value === 'number' && key.toLowerCase().includes('effect') ? 'ms' : ''}
+                        </div>
+                        <div className="text-sm text-slate-600 capitalize">
+                          {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                        </div>
                       </div>
-                      <div className="text-sm text-slate-600 capitalize">
-                        {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                
+                {/* Show trial counts for Posner task */}
+                {customStats.trials_responded !== undefined && (
+                  <div className="mt-4 text-center text-sm text-slate-600">
+                    Responded to {customStats.trials_responded} out of {customStats.total_targets} target presentations
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

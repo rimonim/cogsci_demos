@@ -161,3 +161,100 @@ export const NBackThumbnail = ({ className = "" }) => {
     </div>
   );
 };
+
+export const PosnerThumbnail = ({ className = "" }) => {
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const [showCue, setShowCue] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
+  const [cueType, setCueType] = useState('endogenous'); // 'endogenous' or 'exogenous'
+  const [targetSide, setTargetSide] = useState('right');
+  
+  useEffect(() => {
+    const runCycle = () => {
+      // Reset
+      setShowCue(false);
+      setShowTarget(false);
+      setCurrentPhase(0);
+      
+      // Randomly choose cue type and target side
+      setCueType(Math.random() > 0.5 ? 'endogenous' : 'exogenous');
+      setTargetSide(Math.random() > 0.5 ? 'left' : 'right');
+      
+      // Phase 1: Fixation (500ms)
+      setTimeout(() => {
+        setCurrentPhase(1);
+        setShowCue(true);
+        
+        // Phase 2: Cue (200ms)
+        setTimeout(() => {
+          setShowCue(false);
+          setCurrentPhase(2);
+          
+          // Phase 3: Delay (300ms)
+          setTimeout(() => {
+            setCurrentPhase(3);
+            setShowTarget(true);
+            
+            // Phase 4: Target (500ms)
+            setTimeout(() => {
+              setShowTarget(false);
+              setCurrentPhase(0);
+            }, 500);
+          }, 300);
+        }, 200);
+      }, 500);
+    };
+    
+    runCycle(); // Initial run
+    const interval = setInterval(runCycle, 3000); // Repeat every 3 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-green-50 rounded-lg overflow-hidden relative ${className}`}>
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center h-full">
+        {/* Main display area */}
+        <div className="bg-white rounded-xl p-6 sm:p-8 lg:p-10 w-full max-w-[280px] flex items-center justify-center border border-slate-200 shadow-sm relative min-h-[120px]">
+          
+          {/* Left box */}
+          <div 
+            className={`absolute left-6 border-2 w-8 h-8 flex items-center justify-center rounded transition-all duration-200 ${
+              cueType === 'exogenous' && showCue && targetSide === 'left' 
+                ? 'border-yellow-400 bg-yellow-100 shadow-md' 
+                : 'border-gray-300 bg-gray-50'
+            }`}
+          >
+            {showTarget && targetSide === 'left' && (
+              <div className="w-3 h-3 bg-black rounded-full"></div>
+            )}
+          </div>
+
+          {/* Central fixation and endogenous cue */}
+          <div className="relative">
+            {cueType === 'endogenous' && showCue ? (
+              <span className="text-2xl text-blue-600 font-bold">
+                {targetSide === 'left' ? '←' : '→'}
+              </span>
+            ) : (
+              <span className="text-2xl font-bold text-black">+</span>
+            )}
+          </div>
+
+          {/* Right box */}
+          <div 
+            className={`absolute right-6 border-2 w-8 h-8 flex items-center justify-center rounded transition-all duration-200 ${
+              cueType === 'exogenous' && showCue && targetSide === 'right' 
+                ? 'border-yellow-400 bg-yellow-100 shadow-md' 
+                : 'border-gray-300 bg-gray-50'
+            }`}
+          >
+            {showTarget && targetSide === 'right' && (
+              <div className="w-3 h-3 bg-black rounded-full"></div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -11,6 +11,8 @@ const VisualSearchDemo = lazy(() => import('./demos/VisualSearch'));
 const VisualSearchInstructions = lazy(() => import('./pages/VisualSearchInstructions'));
 const NBackDemo = lazy(() => import('./demos/NBack'));
 const NBackInstructions = lazy(() => import('./pages/NBackInstructions'));
+const PosnerDemo = lazy(() => import('./demos/Posner'));
+const PosnerInstructions = lazy(() => import('./pages/PosnerInstructions'));
 const Results = lazy(() => import('./pages/Results'));
 const Instructions = lazy(() => import('./pages/Instructions'));
 const SessionJoin = lazy(() => import('./pages/SessionJoin'));
@@ -43,6 +45,8 @@ function App() {
         <Route path="/visual-search/task" element={<VisualSearchDemo />} />
         <Route path="/nback" element={<NBackInstructions />} />
         <Route path="/nback/task" element={<NBackDemo />} />
+        <Route path="/posner" element={<PosnerInstructions />} />
+        <Route path="/demos/posner" element={<PosnerDemo />} />
         <Route path="/results" element={<Results />} />
         <Route path="/instructions" element={<Instructions />} />
       </Routes>

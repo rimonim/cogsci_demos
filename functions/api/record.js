@@ -113,8 +113,10 @@ async function handleLegacyTrialSubmission(data, environment) {
       data.task_type = 'stroop';
     } else if (data.letter && data.is_target !== undefined) {
       data.task_type = 'nback';
-    } else if (data.target_present !== undefined) {
+    } else if (data.target_present !== undefined && data.cue_type === undefined) {
       data.task_type = 'visual_search';
+    } else if (data.cue_type && data.cue_validity !== undefined) {
+      data.task_type = 'posner';
     } else {
       data.task_type = 'unknown';
     }
