@@ -258,3 +258,101 @@ export const PosnerThumbnail = ({ className = "" }) => {
     </div>
   );
 };
+
+export const MentalRotationThumbnail = ({ className = "" }) => {
+  const [currentPair, setCurrentPair] = useState(0);
+  
+  // Different challenging shape pairs to cycle through
+  const shapePairs = [
+    {
+      left: { shape: 'F', rotation: 45 },
+      right: { shape: 'F', rotation: 135 },
+      type: 'same'
+    },
+    {
+      left: { shape: 'R', rotation: 30 },
+      right: { shape: 'R_MIRROR', rotation: 60 },
+      type: 'different'
+    },
+    {
+      left: { shape: 'P', rotation: 180 },
+      right: { shape: 'P', rotation: 270 },
+      type: 'same'
+    }
+  ];
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPair(prev => (prev + 1) % shapePairs.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const generateShape = (shapeType, rotation) => {
+    const shapeMap = {
+      'F': 'F',
+      'F_MIRROR': 'F',
+      'R': 'R', 
+      'R_MIRROR': 'R',
+      'P': 'P'
+    };
+    
+    const isMirrored = shapeType.includes('_MIRROR');
+    const baseShape = shapeMap[shapeType] || 'F';
+    
+    return (
+      <div 
+        className="flex items-center justify-center w-8 h-8 transition-transform duration-500"
+        style={{ 
+          transform: `rotate(${rotation}deg) ${isMirrored ? 'scaleX(-1)' : ''}`,
+          fontSize: '24px',
+          fontFamily: 'Georgia, serif',
+          fontWeight: 'bold',
+          color: '#374151',
+          userSelect: 'none'
+        }}
+      >
+        {baseShape}
+      </div>
+    );
+  };
+
+  const currentShapes = shapePairs[currentPair];
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-indigo-50 rounded-lg overflow-hidden relative ${className}`}>
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center h-full">
+        <div className="bg-white rounded-xl p-6 sm:p-8 lg:p-10 w-full max-w-[280px] flex items-center justify-center border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-center gap-8">
+            {/* Left shape */}
+            <div className="flex flex-col items-center">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                {generateShape(currentShapes.left.shape, currentShapes.left.rotation)}
+              </div>
+              <div className="text-xs text-slate-400 mt-1">Left</div>
+            </div>
+            
+            {/* Right shape */}
+            <div className="flex flex-col items-center">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                {generateShape(currentShapes.right.shape, currentShapes.right.rotation)}
+              </div>
+              <div className="text-xs text-slate-400 mt-1">Right</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Indicator for same/different */}
+      <div className="absolute bottom-2 right-2">
+        <div className={`text-xs px-2 py-1 rounded-full ${
+          currentShapes.type === 'same' 
+            ? 'bg-green-100 text-green-700' 
+            : 'bg-red-100 text-red-700'
+        }`}>
+          {currentShapes.type}
+        </div>
+      </div>
+    </div>
+  );
+};

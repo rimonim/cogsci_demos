@@ -13,6 +13,8 @@ const NBackDemo = lazy(() => import('./demos/NBack'));
 const NBackInstructions = lazy(() => import('./pages/NBackInstructions'));
 const PosnerDemo = lazy(() => import('./demos/Posner'));
 const PosnerInstructions = lazy(() => import('./pages/PosnerInstructions'));
+const MentalRotationDemo = lazy(() => import('./demos/MentalRotation'));
+const MentalRotationInstructions = lazy(() => import('./pages/MentalRotationInstructions'));
 const Results = lazy(() => import('./pages/Results'));
 const Instructions = lazy(() => import('./pages/Instructions'));
 const SessionJoin = lazy(() => import('./pages/SessionJoin'));
@@ -47,6 +49,8 @@ function App() {
         <Route path="/nback/task" element={<NBackDemo />} />
         <Route path="/posner" element={<PosnerInstructions />} />
         <Route path="/demos/posner" element={<PosnerDemo />} />
+        <Route path="/mental-rotation" element={<MentalRotationInstructions />} />
+        <Route path="/mental-rotation/task" element={<MentalRotationDemo />} />
         <Route path="/results" element={<Results />} />
         <Route path="/instructions" element={<Instructions />} />
       </Routes>

@@ -10,6 +10,7 @@ A unified, robust platform for cognitive psychology experiments built with React
 - **Visual Search Task**: Target detection in visual arrays with pop-out and conjunction searches
 - **N-Back Task**: Working memory assessment (2-back paradigm)
 - **Posner Cueing Task**: Spatial attention and covert orienting with endogenous and exogenous cues
+- **Mental Rotation Task**: Spatial cognition and mental transformation of 2D shapes with mirror images
 - **Unified Trial Management**: Robust, reusable trial sequencing framework
 
 ### Platform Features
@@ -85,12 +86,14 @@ src/
 │   ├── visual-search/   # Visual search stimulus display
 │   ├── nback/           # N-Back task stimulus display
 │   ├── posner/          # Posner cueing task stimulus display
+│   ├── mental-rotation/ # Mental rotation task stimulus display
 │   └── results/         # Results dashboard components
 ├── demos/
 │   ├── Flanker.jsx      # Flanker task using unified framework
 │   ├── Stroop.jsx       # Stroop task using unified framework
 │   ├── NBack.jsx        # N-Back task using unified framework
 │   ├── Posner.jsx       # Posner cueing task using unified framework
+│   ├── MentalRotation.jsx # Mental rotation task using unified framework
 │   └── VisualSearch.jsx # Visual search task using unified framework
 ├── hooks/
 │   └── useTrialManager.js # Unified trial management framework
@@ -99,6 +102,7 @@ src/
 │   ├── StroopResult.js     # Stroop data model and API
 │   ├── NBackResult.js      # N-Back data model and API
 │   ├── PosnerResult.js     # Posner cueing data model and API
+│   ├── MentalRotationResult.js # Mental rotation data model and API
 │   ├── VisualSearchResult.js # Visual search data model and API
 │   └── StudentResult.js    # Optimized batch data collection
 ├── pages/
@@ -110,7 +114,8 @@ src/
 │   ├── StroopInstructions.jsx  # Stroop task instructions
 │   ├── VisualSearchInstructions.jsx # Visual search instructions
 │   ├── NBackInstructions.jsx   # N-Back task instructions
-│   └── PosnerInstructions.jsx  # Posner cueing instructions
+│   ├── PosnerInstructions.jsx  # Posner cueing instructions
+│   └── MentalRotationInstructions.jsx # Mental rotation instructions
 ├── utils/
 │   ├── sessionContext.js  # Session management utility
 │   ├── instructorAuth.js  # Authentication utilities
@@ -382,12 +387,17 @@ All tasks export data with consistent camel_case field names:
 - `student_name`, `student_id`, `trial_number`, `cue_type`, `cue_validity`, `target_location`, `soa`
 - `target_present`, `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
 
+**Mental Rotation Task:**
+- `student_name`, `student_id`, `trial_number`, `shape_type`, `left_rotation`, `right_rotation`, `trial_type`
+- `correct_response`, `participant_response`, `reaction_time`, `is_correct`, `session_start_time`
+
 ### Performance Metrics
 - **Flanker**: Congruent vs. incongruent accuracy/RT, flanker effect
 - **Stroop**: Congruent vs. incongruent accuracy/RT, Stroop effect  
 - **Visual Search**: Color popout, orientation popout, and conjunction search performance
 - **N-Back**: Hit rate, false alarm rate, signal detection metrics
 - **Posner Cueing**: Valid vs. invalid cue effects, alerting effects, endogenous vs. exogenous attention
+- **Mental Rotation**: Same vs. different accuracy/RT, rotation angle effects, mirror image discrimination, spatial transformation ability
 
 ## Browser Compatibility
 

@@ -1,5 +1,5 @@
 // Task configurations for the unified TaskSetup component
-import { Play, Eye, Search, Brain, Target } from "lucide-react";
+import { Play, Eye, Search, Brain, Target, RotateCw } from "lucide-react";
 
 export const FLANKER_CONFIG = {
   taskName: "Flanker Task Setup",
@@ -84,6 +84,28 @@ export const POSNER_CONFIG = {
   showInstructions: true,
   gradientFrom: "from-slate-50",
   gradientTo: "to-green-50"
+};
+
+export const MENTAL_ROTATION_CONFIG = {
+  taskName: "Mental Rotation Task",
+  theme: "indigo",
+  icon: <RotateCw className="w-6 h-6" />,
+  description: "Decide if two shapes are the same or different",
+  instructions: [
+    "Compare two shapes and decide if they're the same or different",
+    "Ignore rotation - focus only on the shape itself",
+    "Watch out for mirror images - they look similar but are different",
+    "Shapes can be rotated to any angle (continuous rotation)",
+    "You'll start with practice trials, then the main task"
+  ],
+  keyBindings: [
+    { key: "S", description: "if shapes are the same" },
+    { key: "D", description: "if shapes are different" }
+  ],
+  buttonText: "Start Practice Trials",
+  showInstructions: true,
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50"
 };
 
 // PracticeComplete configurations
@@ -459,5 +481,91 @@ export const POSNER_COMPLETE_CONFIG = {
     "student_name", "student_id", "trial_number", "cueType", "cueValidity", "targetLocation", 
     "soa", "targetPresent", "correctResponse", "response", "reaction_time", 
     "is_correct", "session_start_time"
+  ]
+};
+
+export const MENTAL_ROTATION_PRACTICE_CONFIG = {
+  taskName: "Mental Rotation Task",
+  theme: "indigo",
+  icon: <RotateCw className="w-6 h-6" />,
+  title: "Practice Complete!",
+  description: "Great job! You're ready for the main task.",
+  buttonText: "Continue to Main Task",
+  showInstructions: false,
+  showStats: true,
+  reminders: [
+    "Focus on the shape, not the rotation",
+    "Watch out for mirror images - they're different shapes",
+    "S = Same shape, D = Different shape",
+    "Be as accurate and fast as possible"
+  ],
+  keyBindings: [
+    { key: "S", description: "if shapes are the same" },
+    { key: "D", description: "if shapes are different" }
+  ],
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50",
+  accuracyWarningThreshold: 50, // Lower threshold since task is harder
+  lowAccuracyMessage: "Remember to focus on the shape itself, not how it's rotated. Try to mentally rotate one shape to see if it matches the other. Watch out for mirror images - they look very similar but are different shapes!"
+};
+
+export const MENTAL_ROTATION_COMPLETE_CONFIG = {
+  taskName: "Mental Rotation Task",
+  theme: "indigo",
+  icon: <RotateCw className="w-6 h-6" />,
+  title: "Mental Rotation Task Complete!",
+  description: "Thank you for completing the mental rotation task!",
+  buttonText: "Return to Home",
+  showStats: true,
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-indigo-50",
+  calculateStats: (results) => {
+    if (!results || results.length === 0) return { sameShapeAcc: 0, differentShapeAcc: 0, overallAcc: 0, sameShapeRT: 0, differentShapeRT: 0, overallRT: 0 };
+    
+    const validResults = results.filter(r => r.response && r.reaction_time > 0);
+    if (validResults.length === 0) return { sameShapeAcc: 0, differentShapeAcc: 0, overallAcc: 0, sameShapeRT: 0, differentShapeRT: 0, overallRT: 0 };
+    
+    // Split by trial type
+    const sameTrials = validResults.filter(r => r.trialType === 'same');
+    const differentTrials = validResults.filter(r => r.trialType === 'different');
+    
+    // Calculate accuracy
+    const sameCorrect = sameTrials.filter(r => r.is_correct).length;
+    const differentCorrect = differentTrials.filter(r => r.is_correct).length;
+    const totalCorrect = validResults.filter(r => r.is_correct).length;
+    
+    const sameShapeAcc = sameTrials.length > 0 ? (sameCorrect / sameTrials.length) * 100 : 0;
+    const differentShapeAcc = differentTrials.length > 0 ? (differentCorrect / differentTrials.length) * 100 : 0;
+    const overallAcc = (totalCorrect / validResults.length) * 100;
+    
+    // Calculate reaction times (only for correct responses)
+    const sameCorrectTrials = sameTrials.filter(r => r.is_correct);
+    const differentCorrectTrials = differentTrials.filter(r => r.is_correct);
+    const allCorrectTrials = validResults.filter(r => r.is_correct);
+    
+    const sameShapeRT = sameCorrectTrials.length > 0 
+      ? sameCorrectTrials.reduce((sum, r) => sum + r.reaction_time, 0) / sameCorrectTrials.length 
+      : 0;
+    const differentShapeRT = differentCorrectTrials.length > 0 
+      ? differentCorrectTrials.reduce((sum, r) => sum + r.reaction_time, 0) / differentCorrectTrials.length 
+      : 0;
+    const overallRT = allCorrectTrials.length > 0 
+      ? allCorrectTrials.reduce((sum, r) => sum + r.reaction_time, 0) / allCorrectTrials.length 
+      : 0;
+
+    return {
+      same_shape_accuracy: Math.round(sameShapeAcc * 10) / 10,
+      different_shape_accuracy: Math.round(differentShapeAcc * 10) / 10,
+      overall_accuracy: Math.round(overallAcc * 10) / 10,
+      same_shape_rt: Math.round(sameShapeRT),
+      different_shape_rt: Math.round(differentShapeRT),
+      overall_rt: Math.round(overallRT),
+      total_trials: validResults.length
+    };
+  },
+  downloadFields: [
+    "student_name", "student_id", "trial_number", "shape_type", "left_rotation", 
+    "right_rotation", "trial_type", "correct_response", "participant_response", 
+    "reaction_time", "is_correct", "session_start_time"
   ]
 };
