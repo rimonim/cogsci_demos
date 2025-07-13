@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail, NBackThumbnail, PosnerThumbnail, MentalRotationThumbnail } from '@/components/Thumbnails';
+import { FlankerThumbnail, StroopThumbnail, VisualSearchThumbnail, NBackThumbnail, PosnerThumbnail, MentalRotationThumbnail, ChangeDetectionThumbnail } from '@/components/Thumbnails';
 import UniversityLogo from '@/components/UniversityLogo';
 import { InstructorAuth } from '@/utils/instructorAuth';
 import { LogOut, Settings, Users } from 'lucide-react';
@@ -157,6 +157,22 @@ export default function Home() {
                 <Link to="/mental-rotation">
                   <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
                     Start Mental Rotation
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-slate-200 hover:border-teal-300 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 overflow-hidden">
+            <CardContent className="p-0">
+              <div className="aspect-video sm:aspect-[4/3] lg:aspect-square xl:aspect-video">
+                <ChangeDetectionThumbnail className="w-full h-full" />
+              </div>
+              <div className="p-4 lg:p-6">
+                <CardTitle className="text-lg lg:text-xl mb-3">Change Detection</CardTitle>
+                <Link to="/change-detection">
+                  <Button className="w-full bg-teal-600 hover:bg-teal-700">
+                    Start Change Detection
                   </Button>
                 </Link>
               </div>
