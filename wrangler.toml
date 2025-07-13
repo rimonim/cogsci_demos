@@ -4,4 +4,4 @@ pages_build_output_dir = "dist"
 
 [[kv_namespaces]]
 binding = "RT_DB"
-id = "46389a6df4354ea3ac1909e7e03c37b6"
+id = "564c5680b48a4f298c756c2d5482f587"

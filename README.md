@@ -216,6 +216,12 @@ a) **Get your Cloudflare credentials:**
      - **Account Resources**: Include your account
    - Copy the generated token
    - From your Cloudflare dashboard main page, copy your **Account ID** (on the right sidebar)
+  - If you don’t see your Account ID in the dashboard, you can use the Wrangler CLI to retrieve it:
+    ```bash
+    npm install -g wrangler    # if Wrangler is not installed
+    wrangler login             # to authenticate
+    wrangler whoami            # shows your account ID in the output
+    ```
 
 b) **Configure GitHub to deploy automatically:**
    - In your forked repository, go to "Settings" → "Secrets and variables" → "Actions"
