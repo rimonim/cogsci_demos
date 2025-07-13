@@ -275,6 +275,29 @@ export default function PosnerTask() {
       setStimulusOnsetTime(null);
 
       return resultData;
+    },
+
+    onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('Posner experiment completed!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length 
+      });
+      
+      // Submit all collected trial data as a single student record
+      if (studentResult && mainResults.length > 0) {
+        try {
+          console.log(`[POSNER DEBUG] Submitting ${studentResult.getTrialCount()} trials for student`);
+          const submission = await studentResult.submit();
+          
+          if (submission.success) {
+            console.log('[POSNER DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[POSNER DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
+        } catch (error) {
+          console.error('[POSNER DEBUG] Error during data submission:', error);
+        }
+      }
     }
   });
 

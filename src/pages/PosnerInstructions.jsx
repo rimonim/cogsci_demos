@@ -10,7 +10,7 @@ export default function PosnerInstructions() {
   const sessionId = searchParams.get('session');
 
   const startPractice = () => {
-    const destination = '/demos/posner' + (sessionId ? `?session=${sessionId}` : '');
+    const destination = '/posner/task' + (sessionId ? `?session=${sessionId}` : '');
     navigate(destination);
   };
 

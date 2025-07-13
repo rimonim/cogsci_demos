@@ -233,10 +233,15 @@ b) **Configure GitHub to deploy automatically:**
      - **Value**: Your Account ID from step 3a
 
 c) **Deploy:**
-   - Make any small change to trigger deployment (like editing this README)
-   - Push to the `main` branch
-   - GitHub will automatically build and deploy your site to Cloudflare Pages
-   - You'll get a URL like `https://cogsci-demos-abc.pages.dev`
+   - Go to Cloudflare dashboard → Workers & Pages → Pages → "Create application"
+   - Choose "Connect to Git" → select your forked repository
+   - Configure the build settings:
+     - **Project name**: `cogsci-demos`
+     - **Build command**: `npm run build`
+     - **Build output directory**: `dist`
+     - **Root directory**: `/` (leave blank)
+   - Click "Save and Deploy"
+   - After the project exists, GitHub will automatically deploy on every push to `main`
 
 **4. Set Up Data Storage**
 The platform needs a place to store experimental data:
@@ -269,7 +274,7 @@ c) **Configure storage in your project:**
 **5. Set Your Instructor Password**
 This password protects access to session management and results:
 
-- In Cloudflare dashboard, go to Pages → your project → Settings → Environment variables
+- In Cloudflare dashboard, go to Pages → your project → Settings → Variables and Secrets
 - Add a new variable:
   - **Name**: `INSTRUCTOR_PASSWORD`
   - **Value**: Choose a secure password (this is what instructors will use to log in)
@@ -298,7 +303,8 @@ npm install
 npm run build
 
 # Deploy to Cloudflare Pages
-npx wrangler pages deploy dist --project-name=cogsci-demos
+npx wrangler pages project create dist --project-name=cogsci-demos  # run once to create the Pages project if it doesn't exist
+npx wrangler pages deploy dist --project-name=cogsci-demos  # deploy
 ```
 
 ### Customization
@@ -378,6 +384,16 @@ After deployment, verify everything works:
 - Verify internet connection is stable
 - Ensure students are completing all required fields (name, student ID)
 - Check KV storage quota in Cloudflare dashboard
+
+**Site shows blank page with MIME type errors:**
+- This happens when build assets aren't served correctly
+- Go to Cloudflare Pages dashboard → your project → Settings → Builds & deployments
+- Verify these settings:
+  - **Build command**: `npm run build`
+  - **Build output directory**: `dist`
+  - **Root directory**: `/` (or leave blank)
+- If settings are wrong, update them and trigger a new deployment
+- Check that your `wrangler.toml` has `pages_build_output_dir = "dist"`
 
 **Need help?**
 - Check Cloudflare Pages documentation: [developers.cloudflare.com/pages](https://developers.cloudflare.com/pages/)

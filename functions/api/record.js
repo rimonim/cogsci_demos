@@ -117,6 +117,10 @@ async function handleLegacyTrialSubmission(data, environment) {
       data.task_type = 'visual_search';
     } else if (data.cue_type && data.cue_validity !== undefined) {
       data.task_type = 'posner';
+    } else if (data.shape_type && (data.left_rotation !== undefined || data.right_rotation !== undefined)) {
+      data.task_type = 'mental_rotation';
+    } else if (data.set_size !== undefined && data.probe_color !== undefined) {
+      data.task_type = 'change_detection';
     } else {
       data.task_type = 'unknown';
     }

@@ -126,7 +126,7 @@ export default function ChangeDetectionInstructions() {
         {/* Start Button */}
         <div className="text-center">
           <Button 
-            onClick={() => navigate('/demos/change-detection')}
+            onClick={() => navigate('/change-detection/task')}
             size="lg"
             className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 text-lg"
           >

@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { User } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMultiPhaseTrialManager } from "@/hooks/useMultiPhaseTrialManager";
+import { SessionContext } from "@/utils/sessionContext";
 
 import TaskSetup from "@/components/ui/TaskSetup";
 import { CHANGE_DETECTION_CONFIG, CHANGE_DETECTION_PRACTICE_CONFIG, CHANGE_DETECTION_COMPLETE_CONFIG } from "@/components/ui/taskConfigs";
@@ -228,7 +229,19 @@ export default function ChangeDetectionTask() {
         }, 1000);
       } else if (currentPhase === 'task' && studentResult) {
         // Collect trial data for main task
+        console.log('[CHANGE_DETECTION DEBUG] About to add trial data:', {
+          result,
+          studentResult: !!studentResult,
+          trialCount: studentResult.getTrialCount()
+        });
         studentResult.addTrial(result);
+        console.log(`[CHANGE_DETECTION DEBUG] Added trial ${result.trial_number} to collection. Total: ${studentResult.getTrialCount()}`);
+      } else if (currentPhase === 'task') {
+        console.error('[CHANGE_DETECTION DEBUG] Task phase but no studentResult available!', {
+          currentPhase,
+          studentResult: !!studentResult,
+          trialNumber: result.trial_number
+        });
       }
       return result;
     },
@@ -238,27 +251,75 @@ export default function ChangeDetectionTask() {
     },
     
     onExperimentComplete: async (mainResults, practiceResults) => {
+      console.log('[CHANGE_DETECTION DEBUG] onExperimentComplete called!', { 
+        mainTrials: mainResults.length, 
+        practiceTrials: practiceResults.length,
+        hasStudentResult: !!studentResult,
+        studentResultTrialCount: studentResult ? studentResult.getTrialCount() : 0,
+        isSessionMode,
+        sessionId,
+        studentInfo
+      });
+      
       // Submit all collected trial data as a single student record
       if (studentResult && mainResults.length > 0) {
         try {
-          await studentResult.submit();
+          console.log(`[CHANGE_DETECTION DEBUG] About to submit ${studentResult.getTrialCount()} trials for student`);
+          console.log('[CHANGE_DETECTION DEBUG] StudentResult details before submission:', {
+            trialCount: studentResult.getTrialCount(),
+            taskType: studentResult.taskType,
+            studentInfo: studentResult.studentInfo,
+            sessionInfo: studentResult.sessionInfo
+          });
+          
+          const submission = await studentResult.submit();
+          
+          console.log('[CHANGE_DETECTION DEBUG] Submission result:', submission);
+          
+          if (submission.success) {
+            console.log('[CHANGE_DETECTION DEBUG] Successfully submitted all trial data');
+          } else {
+            console.warn('[CHANGE_DETECTION DEBUG] Data submission failed, but saved locally:', submission.error);
+          }
         } catch (error) {
-          // Error during submission - data is saved locally
+          console.error('[CHANGE_DETECTION DEBUG] Error during data submission:', error);
         }
+      } else {
+        console.warn('[CHANGE_DETECTION DEBUG] Not submitting data:', {
+          hasStudentResult: !!studentResult,
+          mainResultsLength: mainResults.length,
+          reason: !studentResult ? 'no_student_result' : 'no_main_results'
+        });
       }
     }
   });
 
   // Check for session data on component mount
   useEffect(() => {
-    if (sessionId && window.sessionData) {
-      const { studentInfo: sessionStudentInfo } = window.sessionData;
-      if (sessionStudentInfo && sessionStudentInfo.name) {
+    console.log('[CHANGE_DETECTION DEBUG] Checking session data:', {
+      sessionId,
+      hasWindowSessionData: !!window.sessionData,
+      windowSessionData: window.sessionData,
+      sessionContextData: SessionContext.getSessionData(),
+      sessionContextStudentInfo: SessionContext.getStudentInfo()
+    });
+    
+    if (sessionId) {
+      const sessionData = SessionContext.getSessionData();
+      const sessionStudentInfo = SessionContext.getStudentInfo();
+      
+      console.log('[CHANGE_DETECTION DEBUG] Session data from context:', {
+        sessionData,
+        sessionStudentInfo
+      });
+      
+      if (sessionData && sessionStudentInfo && sessionStudentInfo.name) {
         const sessionInfo = {
           name: sessionStudentInfo.name,
           id: sessionStudentInfo.studentId || sessionStudentInfo.id || '',
-          shareData: sessionStudentInfo.shareData || true
+          shareData: sessionStudentInfo.shareData !== false
         };
+        console.log('[CHANGE_DETECTION DEBUG] Setting student info from session:', sessionInfo);
         setStudentInfo(sessionInfo);
         setIsSessionMode(true);
         setSessionStartTime(new Date().toISOString());
@@ -266,17 +327,77 @@ export default function ChangeDetectionTask() {
         // Initialize StudentResult for aggregated data collection
         const result = StudentResult.create('change_detection');
         setStudentResult(result);
+        console.log('[CHANGE_DETECTION DEBUG] Created StudentResult for session mode:', {
+          result: !!result,
+          taskType: 'change_detection',
+          sessionInfo
+        });
+      } else {
+        // Session ID but no valid session data - might need to wait
+        console.warn('[CHANGE_DETECTION DEBUG] Session ID present but no valid session data yet');
+        setTimeout(() => {
+          // Try again after a short delay in case session data is still loading
+          const retrySessionData = SessionContext.getSessionData();
+          const retryStudentInfo = SessionContext.getStudentInfo();
+          
+          if (retrySessionData && retryStudentInfo) {
+            console.log('[CHANGE_DETECTION DEBUG] Session data available on retry');
+            const sessionInfo = {
+              name: retryStudentInfo.name,
+              id: retryStudentInfo.studentId || retryStudentInfo.id || '',
+              shareData: retryStudentInfo.shareData !== false
+            };
+            setStudentInfo(sessionInfo);
+            setIsSessionMode(true);
+            setSessionStartTime(new Date().toISOString());
+            
+            const result = StudentResult.create('change_detection');
+            setStudentResult(result);
+            console.log('[CHANGE_DETECTION DEBUG] Created StudentResult for retry session mode:', {
+              result: !!result,
+              retrySessionData,
+              retryStudentInfo
+            });
+          } else {
+            console.warn('[CHANGE_DETECTION DEBUG] Still no session data after retry, falling back to standalone');
+            // Fall back to standalone mode
+            setIsSessionMode(false);
+            setSessionStartTime(new Date().toISOString());
+            
+            const result = StudentResult.create('change_detection');
+            setStudentResult(result);
+            console.log('[CHANGE_DETECTION DEBUG] Created StudentResult for fallback standalone mode:', {
+              result: !!result,
+              reason: 'retry_failed'
+            });
+          }
+        }, 500);
       }
     } else {
       // No session data - standalone mode
+      console.log('[CHANGE_DETECTION DEBUG] No session ID, using standalone mode');
       setIsSessionMode(false);
       setSessionStartTime(new Date().toISOString());
       
       // Initialize StudentResult for standalone mode
       const result = StudentResult.create('change_detection');
       setStudentResult(result);
+      console.log('[CHANGE_DETECTION DEBUG] Created StudentResult for standalone mode:', {
+        result: !!result,
+        reason: 'no_session'
+      });
     }
   }, [sessionId]);
+
+  // Debug studentResult changes
+  useEffect(() => {
+    console.log('[CHANGE_DETECTION DEBUG] StudentResult state changed:', {
+      hasStudentResult: !!studentResult,
+      sessionId,
+      isSessionMode,
+      studentInfo
+    });
+  }, [studentResult, sessionId, isSessionMode, studentInfo]);
 
   // Auto-start practice when ready (for standalone mode)
   useEffect(() => {

@@ -18,7 +18,6 @@ export default function Results() {
   const [clearing, setClearing] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [availableSessions, setAvailableSessions] = useState([]);
-  const [isSessionView, setIsSessionView] = useState(false);
   const [showManagement, setShowManagement] = useState(false);
 
   useEffect(() => {
@@ -28,110 +27,105 @@ export default function Results() {
       return;
     }
 
+    // Load available sessions first
+    loadAvailableSessions();
+    
     // Try to get session ID from URL parameter
     const urlParams = new URLSearchParams(window.location.search);
     const sessionIdFromUrl = urlParams.get('session');
     if (sessionIdFromUrl) {
       setCurrentSessionId(sessionIdFromUrl);
-      setIsSessionView(true);
+      loadSessionResults(sessionIdFromUrl);
+    } else {
+      // If no session specified, just finish loading (will show session selector)
+      setLoading(false);
     }
-    
-    loadResults(sessionIdFromUrl);
-    loadAvailableSessions();
   }, []);
 
   const loadAvailableSessions = async () => {
     try {
+      console.log('[Results] Loading available sessions...');
       const response = await fetch('/api/session', {
         headers: {
           ...InstructorAuth.getAuthHeaders()
         }
       });
       if (response.ok) {
-        const sessions = await response.json();
+        const data = await response.json();
+        console.log(`[Results] Session API response:`, data);
+        
+        // Handle the correct API response format
+        const sessions = data.sessions || [];
+        console.log(`[Results] Loaded ${sessions.length} available sessions`);
         setAvailableSessions(sessions);
+      } else {
+        console.error('[Results] Failed to load sessions:', response.status);
+        setAvailableSessions([]); // Ensure it's always an array
       }
     } catch (error) {
       console.error("Error loading sessions:", error);
+      setAvailableSessions([]); // Ensure it's always an array on error
     }
   };
 
-  const loadResults = async (sessionId = null) => {
+  const loadSessionResults = async (sessionId) => {
+    if (!sessionId) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
-      // If we have a session ID, load from session API
-      if (sessionId) {
-        const response = await fetch(`/api/session/${sessionId}`, {
-          headers: {
-            ...InstructorAuth.getAuthHeaders()
-          }
+      console.log(`[Results] Loading data for session: ${sessionId}`);
+      const response = await fetch(`/api/session/${sessionId}`, {
+        headers: {
+          ...InstructorAuth.getAuthHeaders()
+        }
+      });
+      
+      console.log(`[Results] Session API response status: ${response.status}`);
+      
+      if (response.ok) {
+        const sessionData = await response.json();
+        console.log(`[Results] Session data received:`, {
+          success: sessionData.success,
+          resultCount: sessionData.resultCount,
+          resultsLength: sessionData.results?.length || 0
         });
-        if (response.ok) {
-          const sessionData = await response.json();
-          setResults(sessionData.results || []);
-          setLoading(false);
+        
+        setResults(sessionData.results || []);
+      } else {
+        // Log the error response
+        const errorText = await response.text();
+        console.error(`[Results] Session API call failed:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        
+        // For 401/403, redirect to login
+        if (response.status === 401 || response.status === 403) {
+          alert('Session expired. Please log in again.');
+          InstructorAuth.logout();
+          window.location.href = '/login';
           return;
         }
+        
+        // For other errors, show an alert and clear results
+        alert(`Failed to load session data: ${response.status} ${response.statusText}`);
+        setResults([]);
       }
-      
-      // Otherwise load from API (shared data)
-      const apiData = await FlankerResult.list("-created_date");
-      
-      // Also load from local storage for all task types
-      const flankerLocal = JSON.parse(localStorage.getItem('flankerResults') || '[]');
-      const stroopLocal = JSON.parse(localStorage.getItem('stroopResults') || '[]');
-      const visualSearchLocal = JSON.parse(localStorage.getItem('visualSearchResults') || '[]');
-      const nBackLocal = JSON.parse(localStorage.getItem('nBackResults') || '[]');
-      
-      // Add task_type to local data if missing
-      const flankerLocalWithType = flankerLocal.map(item => ({
-        ...item,
-        task_type: item.task_type || 'flanker'
-      }));
-      
-      const stroopLocalWithType = stroopLocal.map(item => ({
-        ...item, 
-        task_type: item.task_type || 'stroop'
-      }));
-
-      const visualSearchLocalWithType = visualSearchLocal.map(item => ({
-        ...item, 
-        task_type: item.task_type || 'visual_search'
-      }));
-      
-      const nBackLocalWithType = nBackLocal.map(item => ({
-        ...item, 
-        task_type: item.task_type || 'n_back'
-      }));
-      
-      // Combine API and local data, removing duplicates
-      const allData = [
-        ...apiData, 
-        ...flankerLocalWithType, 
-        ...stroopLocalWithType, 
-        ...visualSearchLocalWithType,
-        ...nBackLocalWithType
-      ];
-      
-      // Remove duplicates based on timestamp and participant
-      const uniqueData = allData.filter((item, index, self) => 
-        index === self.findIndex(t => 
-          t.timestamp === item.timestamp && 
-          t.student_id === item.student_id &&
-          t.trial_number === item.trial_number
-        )
-      );
-      
-      setResults(uniqueData);
     } catch (error) {
-      console.error("Error loading results:", error);
+      console.error("Error loading session results:", error);
+      setResults([]);
     }
     setLoading(false);
   };
 
   const switchToSession = (sessionId) => {
     setCurrentSessionId(sessionId);
-    setIsSessionView(true);
-    loadResults(sessionId);
+    loadSessionResults(sessionId);
     
     // Update URL with session parameter
     const url = new URL(window.location);
@@ -147,7 +141,9 @@ export default function Results() {
     setClearing(true);
     try {
       await clearAllTaskData();
-      await loadResults(); // Refresh the results
+      if (currentSessionId) {
+        await loadSessionResults(currentSessionId);
+      }
     } catch (error) {
       console.error('Error clearing data:', error);
     } finally {
@@ -157,31 +153,32 @@ export default function Results() {
 
   // Determine what tasks are represented in the data
   const taskTypes = [...new Set(results.map(r => r.task_type).filter(Boolean))];
-  const isMixed = taskTypes.length > 1;
   const primaryTask = taskTypes.length === 1 ? taskTypes[0] : null;
 
-  // Find current session info if we're in session view
-  const currentSession = isSessionView && availableSessions.find(s => s.id === currentSessionId);
+  // Find current session info
+  const currentSession = currentSessionId && availableSessions.find(s => s.sessionId === currentSessionId);
 
   const getResultsTitle = () => {
-    if (isSessionView && currentSession) {
+    if (currentSessionId && currentSession) {
       return `Session: ${currentSession.name || currentSessionId}`;
     }
     
-    if (results.length === 0) return "Results Dashboard";
-    if (isMixed) return "Mixed task performance analysis";
+    if (results.length === 0) return "Session Results";
     if (primaryTask === 'flanker') return "Flanker task performance analysis";
     if (primaryTask === 'stroop') return "Stroop task performance analysis";
     if (primaryTask === 'visual_search') return "Visual search task performance analysis";
     if (primaryTask === 'n_back') return "N-back task performance analysis";
+    if (primaryTask === 'posner') return "Posner cueing task performance analysis";
+    if (primaryTask === 'mental_rotation') return "Mental rotation task performance analysis";
+    if (primaryTask === 'change_detection') return "Change detection task performance analysis";
     return "Cognitive task performance analysis";
   };
 
   const downloadAllResults = async () => {
     if (results.length === 0) return;
 
-    // If we're viewing a session, use session endpoint for CSV
-    if (isSessionView && currentSessionId) {
+    // If we're viewing a specific session, use session endpoint for CSV
+    if (currentSessionId) {
       try {
         const response = await fetch(`/api/session/${currentSessionId}?format=csv`, {
           headers: {
@@ -269,7 +266,7 @@ export default function Results() {
             <h1 className="text-3xl font-bold text-slate-900">Results Dashboard</h1>
             <p className="text-slate-600 mt-1">{getResultsTitle()}</p>
             
-            {isSessionView && currentSession && (
+            {currentSessionId && currentSession && (
               <div className="mt-2 flex items-center gap-2">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700">
                   Session ID: {currentSessionId}
@@ -284,12 +281,11 @@ export default function Results() {
             )}
           </div>
           <div className="flex gap-3">
-            {!showManagement && isSessionView && (
+            {!showManagement && currentSessionId && (
               <Button
                 onClick={() => {
-                  setIsSessionView(false);
                   setCurrentSessionId(null);
-                  loadResults();
+                  setResults([]);
                   
                   // Update URL to remove session parameter
                   const url = new URL(window.location);
@@ -299,7 +295,7 @@ export default function Results() {
                 variant="outline"
                 className="text-slate-600"
               >
-                ← Back to All Results
+                ← Back to Session List
               </Button>
             )}
             
@@ -314,23 +310,16 @@ export default function Results() {
                   Manage Sessions
                 </Button>
                 
-                <Button
-                  onClick={handleClearAllData}
-                  disabled={results.length === 0 || clearing}
-                  variant="outline"
-                  className="border-red-200 text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  {clearing ? 'Clearing...' : 'Clear All Data'}
-                </Button>
-                <Button
-                  onClick={downloadAllResults}
-                  disabled={results.length === 0}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export {isSessionView ? 'Session' : 'All'} Data
-                </Button>
+                {currentSessionId && (
+                  <Button
+                    onClick={downloadAllResults}
+                    disabled={results.length === 0}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Session Data
+                  </Button>
+                )}
               </>
             )}
             
@@ -349,79 +338,111 @@ export default function Results() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-slate-600 mt-4">Loading results...</p>
+            <p className="text-slate-600 mt-4">Loading...</p>
+          </div>
+        ) : showManagement ? (
+          <SessionManagement 
+            onRefresh={() => {
+              loadAvailableSessions();
+              if (currentSessionId) {
+                loadSessionResults(currentSessionId);
+              }
+            }}
+          />
+        ) : !currentSessionId ? (
+          /* Session Selection View */
+          <div className="space-y-6">
+            <Card className="bg-white border-slate-200">
+              <CardHeader>
+                <CardTitle className="text-xl">Select a Session to View Results</CardTitle>
+                <p className="text-slate-600">Choose from your available sessions below to view detailed results and analytics.</p>
+              </CardHeader>
+              <CardContent>
+                {availableSessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">No Sessions Found</h3>
+                    <p className="text-slate-600 mb-4">
+                      You haven't created any sessions yet. Create a session to start collecting student data.
+                    </p>
+                    <Button onClick={() => window.location.href = '/sessions'}>
+                      Create First Session
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(availableSessions || []).map(session => (
+                      <Card 
+                        key={session.sessionId} 
+                        className="cursor-pointer hover:shadow-md transition-all border-slate-200 hover:border-blue-300"
+                        onClick={() => switchToSession(session.sessionId)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-semibold text-slate-900">
+                              {session.instructorName || 'Unknown Instructor'}
+                            </h3>
+                            <Badge variant="outline" className="text-xs">
+                              {session.demoType || 'Unknown Task'}
+                            </Badge>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                              <Badge variant="outline" className="bg-green-50 text-green-700">
+                                {(session.studentRecords || 0) + (session.legacyRecords || 0)} Results
+                              </Badge>
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                                {session.participantCount || 0} Students
+                              </Badge>
+                              {session.isExpired && (
+                                <Badge variant="outline" className="bg-red-50 text-red-700">
+                                  Expired
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              Session ID: {session.sessionId}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Created {new Date(session.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         ) : results.length === 0 ? (
+          /* No Data for Selected Session */
           <Card className="bg-white border-slate-200 max-w-2xl mx-auto">
             <CardContent className="p-12 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Data {isSessionView ? 'For This Session' : 'Yet'}</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">No Data For This Session</h3>
               <p className="text-slate-600 mb-6">
-                {isSessionView 
-                  ? "This session doesn't have any results yet. Once students join and complete experiments, results will appear here."
-                  : "Students haven't started taking experiments yet. Once they begin, results will appear here in real-time."
-                }
+                This session doesn't have any results yet. Once students join and complete experiments, results will appear here.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                <h4 className="font-semibold text-blue-900 mb-2">📝 For Instructors:</h4>
+                <h4 className="font-semibold text-blue-900 mb-2">📝 Next Steps:</h4>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• {isSessionView 
-                    ? "Share your session link with students to get started" 
-                    : "Create a session to start collecting class data"
-                  }</li>
-                  <li>• Results will automatically aggregate here</li>
-                  <li>• Download CSV data for R analysis when ready</li>
-                  {!isSessionView && (
-                    <li>• Use "Reset Data" before each new class session</li>
-                  )}
+                  <li>• Share your session link with students to get started</li>
+                  <li>• Results will automatically appear here as students complete the task</li>
+                  <li>• Download CSV data for analysis when ready</li>
                 </ul>
               </div>
             </CardContent>
           </Card>
-        ) : showManagement ? (
-          <SessionManagement 
-            onRefresh={() => {
-              loadResults();
-              loadAvailableSessions();
-            }}
-          />
         ) : (
+          /* Session Results View */
           <div className="space-y-8">
-            {/* Session selector for non-session view */}
-            {!isSessionView && availableSessions.length > 0 && (
-              <Card className="bg-white border-slate-200">
-                <CardHeader>
-                  <CardTitle className="text-xl">Available Sessions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availableSessions.map(session => (
-                      <Card 
-                        key={session.id} 
-                        className="cursor-pointer hover:shadow-md transition-all"
-                        onClick={() => switchToSession(session.id)}
-                      >
-                        <CardContent className="p-4">
-                          <h3 className="font-semibold">{session.name || `Session ${session.id}`}</h3>
-                          <div className="mt-2 flex items-center gap-2">
-                            <Badge variant="outline">{session.resultCount || 0} Results</Badge>
-                            <Badge variant="outline">{session.studentCount || 0} Students</Badge>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-2">
-                            Created {new Date(session.created).toLocaleDateString()}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            <ResultsSummary results={results} participants={participants} isSessionView={isSessionView} />
-            <ParticipantTable participants={participants} isSessionView={isSessionView} sessionId={currentSessionId} />
+            <ResultsSummary results={results} participants={participants} isSessionView={true} />
+            <ParticipantTable participants={participants} isSessionView={true} sessionId={currentSessionId} />
           </div>
         )}
 

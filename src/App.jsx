@@ -50,11 +50,11 @@ function App() {
         <Route path="/nback" element={<NBackInstructions />} />
         <Route path="/nback/task" element={<NBackDemo />} />
         <Route path="/posner" element={<PosnerInstructions />} />
-        <Route path="/demos/posner" element={<PosnerDemo />} />
+        <Route path="/posner/task" element={<PosnerDemo />} />
         <Route path="/mental-rotation" element={<MentalRotationInstructions />} />
         <Route path="/mental-rotation/task" element={<MentalRotationDemo />} />
         <Route path="/change-detection" element={<ChangeDetectionInstructions />} />
-        <Route path="/demos/change-detection" element={<ChangeDetectionDemo />} />
+        <Route path="/change-detection/task" element={<ChangeDetectionDemo />} />
         <Route path="/results" element={<Results />} />
         <Route path="/instructions" element={<Instructions />} />
       </Routes>

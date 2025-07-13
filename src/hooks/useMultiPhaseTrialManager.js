@@ -15,7 +15,8 @@ export function useMultiPhaseTrialManager({
   onTrialStart = null,
   onTrialEnd = null,
   onPhaseStart = null,
-  onPhaseEnd = null
+  onPhaseEnd = null,
+  onExperimentComplete = null
 }) {
   // Core state
   const [experimentPhase, setExperimentPhase] = useState('setup'); // setup, practice, practice_complete, task, complete
@@ -138,6 +139,20 @@ export function useMultiPhaseTrialManager({
           // Experiment complete
           console.log('[Multi-Phase] Experiment complete');
           setExperimentPhase('complete');
+          
+          // Call onExperimentComplete callback if provided
+          if (onExperimentComplete) {
+            const allMainResults = [...results, processedResult];
+            console.log('[Multi-Phase] Calling onExperimentComplete with:', {
+              mainResults: allMainResults.length,
+              practiceResults: practiceResults.length
+            });
+            try {
+              onExperimentComplete(allMainResults, practiceResults);
+            } catch (error) {
+              console.error('[Multi-Phase] Error in onExperimentComplete callback:', error);
+            }
+          }
         }
       } else {
         // Next trial

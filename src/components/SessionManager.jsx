@@ -18,7 +18,10 @@ export default function SessionManager() {
     { value: 'flanker', label: 'Flanker Task' },
     { value: 'stroop', label: 'Stroop Task' },
     { value: 'nback', label: 'N-Back Task' },
-    { value: 'visual_search', label: 'Visual Search Task' }
+    { value: 'visual_search', label: 'Visual Search Task' },
+    { value: 'posner', label: 'Posner Cueing Task' },
+    { value: 'mental_rotation', label: 'Mental Rotation Task' },
+    { value: 'change_detection', label: 'Change Detection Task' }
   ];
 
   const createSession = async () => {

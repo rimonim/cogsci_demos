@@ -111,7 +111,10 @@ export default function SessionJoin() {
       flanker: '/flanker',
       stroop: '/stroop',
       nback: '/nback',
-      visual_search: '/visual-search'
+      visual_search: '/visual-search',
+      posner: '/posner',
+      mental_rotation: '/mental-rotation',
+      change_detection: '/change-detection'
     };
 
     const route = demoRoutes[session.demoType];
@@ -155,7 +158,10 @@ export default function SessionJoin() {
     flanker: 'Flanker Task',
     stroop: 'Stroop Task',
     nback: 'N-Back Task',
-    visual_search: 'Visual Search Task'
+    visual_search: 'Visual Search Task',
+    posner: 'Posner Cueing Task',
+    mental_rotation: 'Mental Rotation Task',
+    change_detection: 'Change Detection Task'
   };
 
   return (
