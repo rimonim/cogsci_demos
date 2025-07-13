@@ -25,6 +25,14 @@ export default function StimulusDisplay({
     return (
       <div className="min-h-[500px] flex items-center justify-center">
         <div className="text-5xl text-slate-400 font-bold">+</div>
+        {/* Show feedback during fixation for practice trials */}
+        {feedback && feedback.show && (
+          <div className="absolute text-center mt-16">
+            <div className={`text-lg font-medium ${feedback.correct ? 'text-green-600' : 'text-red-600'}`}>
+              {feedback.text}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -34,6 +42,14 @@ export default function StimulusDisplay({
     return (
       <div className="min-h-[500px] flex items-center justify-center">
         <div className="text-5xl text-slate-400 font-bold">+</div>
+        {/* Show feedback during inter-trial delay for practice trials */}
+        {feedback && feedback.show && (
+          <div className="absolute text-center mt-16">
+            <div className={`text-lg font-medium ${feedback.correct ? 'text-green-600' : 'text-red-600'}`}>
+              {feedback.text}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
