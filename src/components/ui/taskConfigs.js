@@ -108,6 +108,47 @@ export const MENTAL_ROTATION_CONFIG = {
   gradientTo: "to-indigo-50"
 };
 
+export const CHANGE_DETECTION_CONFIG = {
+  taskName: "Change Detection Task",
+  theme: "teal",
+  icon: <Brain className="w-6 h-6" />,
+  description: "Test your visual working memory capacity",
+  instructions: [
+    "You'll see grids of colored squares that appear briefly",
+    "After a delay, a single square will appear - decide if its color changed",
+    "Try to be both fast and accurate",
+    "Your Cowan's K score measures how many items you can hold in visual memory"
+  ],
+  keyBindings: [
+    { key: "S", description: "if the color is the SAME" },
+    { key: "D", description: "if the color CHANGED" }
+  ],
+  buttonText: "Start Practice Trials",
+  showInstructions: true,
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-teal-50",
+  exampleDisplay: {
+    title: "Example Trial Sequence",
+    steps: [
+      {
+        label: "1. Memory Array",
+        description: "Study the colored squares (200ms)",
+        visual: "grid"
+      },
+      {
+        label: "2. Blank Delay", 
+        description: "Remember the colors (900ms)",
+        visual: "blank"
+      },
+      {
+        label: "3. Test",
+        description: "Did this square's color change?",
+        visual: "probe"
+      }
+    ]
+  }
+};
+
 // PracticeComplete configurations
 export const FLANKER_PRACTICE_CONFIG = {
   taskName: "Flanker Task",
@@ -205,33 +246,28 @@ export const POSNER_PRACTICE_CONFIG = {
   gradientTo: "to-green-50",
   showAccuracy: false, // Don't show accuracy for Posner task
   calculateStats: (results) => {
-    if (!results || results.length === 0) return { validCuedRT: null, invalidCuedRT: null, neutralRT: null, trialsResponded: 0 };
+    if (!results || results.length === 0) return { validCuedRT: null, invalidCuedRT: null, trialsResponded: 0 };
     
     // Only include target trials with responses (not timeouts)
     const targetTrials = results.filter(r => r.targetPresent && r.response === 'space' && r.reaction_time > 0);
     
     const validCuedTrials = targetTrials.filter(r => r.cueValidity === 'valid');
     const invalidCuedTrials = targetTrials.filter(r => r.cueValidity === 'invalid');
-    const neutralTrials = targetTrials.filter(r => r.cueValidity === 'neutral');
     
     console.log('[POSNER STATS DEBUG] Target trials:', {
       total: targetTrials.length,
       valid: validCuedTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType })),
-      invalid: invalidCuedTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType })),
-      neutral: neutralTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType }))
+      invalid: invalidCuedTrials.map(t => ({ rt: t.reaction_time, cue: t.cueType }))
     });
     
     const validCuedRT = validCuedTrials.length > 0 ? 
       Math.round(validCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / validCuedTrials.length) : null;
     const invalidCuedRT = invalidCuedTrials.length > 0 ? 
       Math.round(invalidCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / invalidCuedTrials.length) : null;
-    const neutralRT = neutralTrials.length > 0 ? 
-      Math.round(neutralTrials.reduce((sum, r) => sum + r.reaction_time, 0) / neutralTrials.length) : null;
     
     return {
       validCuedRT,
       invalidCuedRT,
-      neutralRT,
       trialsResponded: targetTrials.length,
       totalTargets: results.filter(r => r.targetPresent).length
     };
@@ -439,18 +475,14 @@ export const POSNER_COMPLETE_CONFIG = {
     
     const validCuedTrials = targetTrials.filter(r => r.cueValidity === 'valid');
     const invalidCuedTrials = targetTrials.filter(r => r.cueValidity === 'invalid');
-    const neutralTrials = targetTrials.filter(r => r.cueValidity === 'neutral');
     
     const validCuedRT = validCuedTrials.length > 0 ? 
       validCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / validCuedTrials.length : null;
     const invalidCuedRT = invalidCuedTrials.length > 0 ? 
       invalidCuedTrials.reduce((sum, r) => sum + r.reaction_time, 0) / invalidCuedTrials.length : null;
-    const neutralRT = neutralTrials.length > 0 ? 
-      neutralTrials.reduce((sum, r) => sum + r.reaction_time, 0) / neutralTrials.length : null;
     
     // Calculate cueing effects (only if we have the necessary data)
     const validityEffect = (invalidCuedRT !== null && validCuedRT !== null) ? invalidCuedRT - validCuedRT : null;
-    const alertingEffect = (neutralRT !== null && validCuedRT !== null) ? neutralRT - validCuedRT : null;
     
     // Group by SOA for additional analysis
     const soa50Trials = targetTrials.filter(r => r.soa === 50);
@@ -466,9 +498,7 @@ export const POSNER_COMPLETE_CONFIG = {
     return {
       valid_cued_rt: validCuedRT !== null ? Math.round(validCuedRT) : null,
       invalid_cued_rt: invalidCuedRT !== null ? Math.round(invalidCuedRT) : null,
-      neutral_rt: neutralRT !== null ? Math.round(neutralRT) : null,
       validity_effect: validityEffect !== null ? Math.round(validityEffect) : null,
-      alerting_effect: alertingEffect !== null ? Math.round(alertingEffect) : null,
       soa_50ms_rt: soa50RT !== null ? Math.round(soa50RT) : null,
       soa_150ms_rt: soa150RT !== null ? Math.round(soa150RT) : null,
       soa_300ms_rt: soa300RT !== null ? Math.round(soa300RT) : null,
@@ -566,6 +596,118 @@ export const MENTAL_ROTATION_COMPLETE_CONFIG = {
   downloadFields: [
     "student_name", "student_id", "trial_number", "shape_type", "left_rotation", 
     "right_rotation", "trial_type", "correct_response", "participant_response", 
+    "reaction_time", "is_correct", "session_start_time"
+  ]
+};
+
+export const CHANGE_DETECTION_PRACTICE_CONFIG = {
+  taskName: "Change Detection Task",
+  theme: "teal",
+  title: "Practice Complete!",
+  description: "Great job! Here's how you performed in the practice trials.",
+  buttonText: "Continue to Main Task",
+  showStats: true,
+  reminders: [
+    "Focus on remembering both colors and their locations",
+    "Take a moment to study each array carefully",
+    "Don't worry if it's challenging - this tests the limits of visual memory"
+  ],
+  keyBindings: [
+    { key: "S", description: "Same color" },
+    { key: "D", description: "Different color" }
+  ],
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-teal-50",
+  accuracyWarningThreshold: 60,
+  lowAccuracyMessage: "Working memory tasks are very challenging! Focus on studying each array carefully. The main task will give you more practice.",
+  // Custom stats calculation for practice results
+  calculateStats: (results) => {
+    if (!results || results.length === 0) return null;
+    
+    const validResults = results.filter(r => 
+      r.reaction_time > 0 && 
+      r.participant_response && 
+      r.participant_response !== 'timeout'
+    );
+    
+    if (validResults.length === 0) return null;
+    
+    const correctResponses = validResults.filter(r => r.is_correct);
+    const accuracy = (correctResponses.length / validResults.length) * 100;
+    const avgRT = correctResponses.length > 0 
+      ? correctResponses.reduce((sum, r) => sum + r.reaction_time, 0) / correctResponses.length 
+      : 0;
+    
+    return {
+      accuracy: accuracy.toFixed(1),
+      avgRT: avgRT.toFixed(0),
+      totalTrials: validResults.length,
+      correctTrials: correctResponses.length
+    };
+  }
+};
+
+export const CHANGE_DETECTION_COMPLETE_CONFIG = {
+  taskName: "Change Detection Task",
+  theme: "teal",
+  title: "Change Detection Task Complete!",
+  description: "Thank you for participating! Here are your visual working memory results:",
+  gradientFrom: "from-slate-50",
+  gradientTo: "to-teal-50",
+  showDetailedStats: true,
+  calculateCustomStats: (results) => {
+    if (!results || results.length === 0) return {};
+    
+    const validResults = results.filter(r => 
+      r.reaction_time > 0 && 
+      r.participant_response && 
+      r.participant_response !== 'timeout'
+    );
+    
+    if (validResults.length === 0) return {};
+    
+    // Group by set size
+    const setSize4Trials = validResults.filter(r => r.set_size === 4);
+    const setSize8Trials = validResults.filter(r => r.set_size === 8);
+    
+    // Calculate accuracy for each set size
+    const setSize4Accuracy = setSize4Trials.length > 0 
+      ? (setSize4Trials.filter(r => r.is_correct).length / setSize4Trials.length) * 100 
+      : 0;
+    const setSize8Accuracy = setSize8Trials.length > 0 
+      ? (setSize8Trials.filter(r => r.is_correct).length / setSize8Trials.length) * 100 
+      : 0;
+    
+    // Calculate reaction times (only for correct responses)
+    const setSize4Correct = setSize4Trials.filter(r => r.is_correct);
+    const setSize8Correct = setSize8Trials.filter(r => r.is_correct);
+    
+    const setSize4RT = setSize4Correct.length > 0 
+      ? setSize4Correct.reduce((sum, r) => sum + r.reaction_time, 0) / setSize4Correct.length 
+      : 0;
+    const setSize8RT = setSize8Correct.length > 0 
+      ? setSize8Correct.reduce((sum, r) => sum + r.reaction_time, 0) / setSize8Correct.length 
+      : 0;
+    
+    // Calculate Cowan's K (working memory capacity)
+    const k4 = 4 * (2 * (setSize4Accuracy / 100) - 1);
+    const k8 = 8 * (2 * (setSize8Accuracy / 100) - 1);
+    const overallK = (k4 + k8) / 2;
+    
+    return {
+      set_size_4_accuracy: Math.round(setSize4Accuracy * 10) / 10,
+      set_size_8_accuracy: Math.round(setSize8Accuracy * 10) / 10,
+      set_size_4_rt: Math.round(setSize4RT),
+      set_size_8_rt: Math.round(setSize8RT),
+      cowan_k_4: Math.round(k4 * 100) / 100,
+      cowan_k_8: Math.round(k8 * 100) / 100,
+      working_memory_capacity: Math.round(overallK * 100) / 100,
+      total_trials: validResults.length
+    };
+  },
+  downloadFields: [
+    "student_name", "student_id", "trial_number", "set_size", 
+    "participant_response", "correct_response", 
     "reaction_time", "is_correct", "session_start_time"
   ]
 };

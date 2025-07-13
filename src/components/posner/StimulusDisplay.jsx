@@ -10,6 +10,9 @@ const StimulusDisplay = ({
 }) => {
   if (!trial) return null;
 
+  // Debug logging
+  console.log(`[POSNER DISPLAY] Phase: ${currentPhase}, CueType: ${trial.cueType}, CueLocation: ${trial.cueLocation}, ShowingCue: ${showingCue}, ShowingTarget: ${showingTarget}, TargetLocation: ${trial.targetLocation}`);
+
   // Display dimensions and positioning
   const boxSize = 80;
   const boxDistance = 280; // Distance from center (increased from 200)
@@ -22,10 +25,10 @@ const StimulusDisplay = ({
         
         {/* Left stimulus box */}
         <div 
-          className={`absolute border-2 border-gray-400 flex items-center justify-center
+          className={`absolute border-2 flex items-center justify-center transition-all duration-100
             ${trial.cueType === 'exogenous' && currentPhase === 'cue' && trial.cueLocation === 'left' 
-              ? 'border-yellow-400 bg-yellow-100 shadow-lg' 
-              : 'bg-gray-50'}`}
+              ? 'border-yellow-400 bg-yellow-200 shadow-lg border-4' 
+              : 'border-gray-400 bg-gray-50'}`}
           style={{
             width: `${boxSize}px`,
             height: `${boxSize}px`,
@@ -41,10 +44,10 @@ const StimulusDisplay = ({
 
         {/* Right stimulus box */}
         <div 
-          className={`absolute border-2 border-gray-400 flex items-center justify-center
+          className={`absolute border-2 flex items-center justify-center transition-all duration-100
             ${trial.cueType === 'exogenous' && currentPhase === 'cue' && trial.cueLocation === 'right' 
-              ? 'border-yellow-400 bg-yellow-100 shadow-lg' 
-              : 'bg-gray-50'}`}
+              ? 'border-yellow-400 bg-yellow-200 shadow-lg border-4' 
+              : 'border-gray-400 bg-gray-50'}`}
           style={{
             width: `${boxSize}px`,
             height: `${boxSize}px`,
@@ -64,22 +67,16 @@ const StimulusDisplay = ({
           top: '200px',
           transform: 'translate(-50%, -50%)'
         }}>
-          {/* Always show either fixation cross or endogenous cue */}
+          {/* Show endogenous cue (central arrow) or fixation cross */}
           {trial.cueType === 'endogenous' && currentPhase === 'cue' ? (
             /* Endogenous cue (central arrow) - replaces fixation cross */
             <div className="flex items-center justify-center w-12 h-12">
-              <span className={`text-5xl font-bold ${
-                trial.cueLocation === 'left' ? 'text-blue-600' : 
-                trial.cueLocation === 'right' ? 'text-blue-600' : 
-                'text-gray-600'
-              }`}>
-                {trial.cueLocation === 'left' ? '←' : 
-                 trial.cueLocation === 'right' ? '→' : 
-                 '•'}
+              <span className={`text-5xl font-bold text-blue-600`}>
+                {trial.cueLocation === 'left' ? '←' : '→'}
               </span>
             </div>
           ) : (
-            /* Fixation cross - always visible when not showing endogenous cue */
+            /* Fixation cross - visible during fixation, delay, and target phases */
             <span className="text-2xl font-bold text-black">+</span>
           )}
         </div>

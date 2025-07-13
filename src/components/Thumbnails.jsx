@@ -356,3 +356,125 @@ export const MentalRotationThumbnail = ({ className = "" }) => {
     </div>
   );
 };
+
+export const ChangeDetectionThumbnail = ({ className = "" }) => {
+  const [currentPhase, setCurrentPhase] = useState(0); // 0: memory array, 1: blank, 2: probe
+  const [currentArray, setCurrentArray] = useState(0);
+  
+  // Different memory arrays to cycle through
+  const memoryArrays = [
+    // Set size 4
+    [
+      { color: '#EF4444', position: 0 }, // red
+      { color: '#3B82F6', position: 5 }, // blue
+      { color: '#22C55E', position: 10 }, // green
+      { color: '#EAB308', position: 15 }, // yellow
+    ],
+    // Set size 6
+    [
+      { color: '#A855F7', position: 1 }, // purple
+      { color: '#F97316', position: 4 }, // orange
+      { color: '#EC4899', position: 7 }, // pink
+      { color: '#06B6D4', position: 9 }, // cyan
+      { color: '#EF4444', position: 12 }, // red
+      { color: '#22C55E', position: 14 }, // green
+    ]
+  ];
+  
+  const probes = [
+    { color: '#EF4444', position: 0 }, // matches first array
+    { color: '#A855F7', position: 1 }, // matches second array
+  ];
+  
+  useEffect(() => {
+    const runCycle = () => {
+      setCurrentPhase(0); // Memory array
+      
+      setTimeout(() => {
+        setCurrentPhase(1); // Blank retention
+        
+        setTimeout(() => {
+          setCurrentPhase(2); // Test probe
+          
+          setTimeout(() => {
+            // Switch to next array
+            setCurrentArray(prev => (prev + 1) % memoryArrays.length);
+            setCurrentPhase(0);
+          }, 1000);
+        }, 800);
+      }, 800);
+    };
+    
+    runCycle();
+    const interval = setInterval(runCycle, 4000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentMemoryArray = memoryArrays[currentArray];
+  const currentProbe = probes[currentArray];
+
+  return (
+    <div className={`bg-gradient-to-br from-slate-50 to-teal-50 rounded-lg overflow-hidden relative ${className}`}>
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center h-full">
+        {/* Main display */}
+        <div className="bg-white rounded-xl p-6 sm:p-8 lg:p-10 w-full max-w-[280px] flex items-center justify-center border border-slate-200 shadow-sm min-h-[120px]">
+          
+          {currentPhase === 0 ? (
+            // Memory array phase
+            <div className="grid grid-cols-4 gap-2 w-[80px] h-[80px]">
+              {Array.from({ length: 16 }, (_, index) => {
+                const square = currentMemoryArray.find(s => s.position === index);
+                return (
+                  <div key={index} className="flex items-center justify-center">
+                    {square ? (
+                      <div
+                        className="w-3 h-3 rounded border border-slate-300"
+                        style={{ backgroundColor: square.color }}
+                      />
+                    ) : (
+                      <div className="w-3 h-3" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : currentPhase === 1 ? (
+            // Blank retention phase
+            <div className="text-3xl text-slate-400 font-bold">+</div>
+          ) : (
+            // Test probe phase
+            <div className="grid grid-cols-4 gap-2 w-[80px] h-[80px]">
+              {Array.from({ length: 16 }, (_, index) => {
+                const isProbe = index === currentProbe.position;
+                return (
+                  <div key={index} className="flex items-center justify-center">
+                    {isProbe ? (
+                      <div
+                        className="w-3 h-3 rounded border-2 border-slate-400"
+                        style={{ backgroundColor: currentProbe.color }}
+                      />
+                    ) : (
+                      <div className="w-3 h-3" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Phase indicator */}
+      <div className="absolute bottom-2 right-2">
+        <div className={`text-xs px-2 py-1 rounded-full ${
+          currentPhase === 0 ? 'bg-blue-100 text-blue-700' :
+          currentPhase === 1 ? 'bg-yellow-100 text-yellow-700' :
+          'bg-green-100 text-green-700'
+        }`}>
+          {currentPhase === 0 ? 'memory' : currentPhase === 1 ? 'retention' : 'test'}
+        </div>
+      </div>
+    </div>
+  );
+};

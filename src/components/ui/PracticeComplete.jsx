@@ -26,6 +26,7 @@ import { CheckCircle, ArrowRight, Target, Clock, Check } from 'lucide-react';
  */
 export default function PracticeComplete({ 
   results, 
+  stats, // Pre-calculated stats from trial manager
   onContinue, 
   onStartExperiment, 
   config 
@@ -84,7 +85,14 @@ export default function PracticeComplete({
   let customStats = null;
   let showLowAccuracyWarning = false;
 
-  if (results && results.length > 0 && taskConfig.showStats) {
+  // Use pre-calculated stats if available, otherwise calculate from results
+  if (stats && taskConfig.showStats) {
+    // Use pre-calculated stats from trial manager
+    customStats = stats;
+    accuracy = stats.accuracy || 0;
+    avgRT = stats.avgReactionTime || 0;
+    showLowAccuracyWarning = accuracy < taskConfig.accuracyWarningThreshold;
+  } else if (results && results.length > 0 && taskConfig.showStats) {
     // Check if there's a custom stats calculator
     if (taskConfig.calculateStats) {
       customStats = taskConfig.calculateStats(results);
@@ -128,13 +136,14 @@ export default function PracticeComplete({
         
         <CardContent className="space-y-6">
           {/* Performance Statistics */}
-          {taskConfig.showStats && results && results.length > 0 && (
+          {taskConfig.showStats && (stats || (results && results.length > 0)) && (
             <div>
               {customStats ? (
-                /* Custom stats for tasks like Posner */
+                /* Custom stats display */
                 <div className="space-y-3">
-                  {(customStats.validCuedRT !== undefined || customStats.invalidCuedRT !== undefined || customStats.neutralRT !== undefined) && (
-                    <div className="grid grid-cols-3 gap-3">
+                  {/* Posner-specific stats */}
+                  {(customStats.validCuedRT !== undefined || customStats.invalidCuedRT !== undefined) && (
+                    <div className="grid grid-cols-2 gap-3">
                       <div className={`rounded-lg p-3 text-center border ${currentTheme.card}`}>
                         <Clock className={`w-5 h-5 ${currentTheme.icon} mx-auto mb-1`} />
                         <div className={`text-lg font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
@@ -149,18 +158,47 @@ export default function PracticeComplete({
                         </div>
                         <div className={`text-xs ${currentTheme.icon}`}>Invalid Cued</div>
                       </div>
-                      <div className={`rounded-lg p-3 text-center border ${currentTheme.card}`}>
-                        <Clock className={`w-5 h-5 ${currentTheme.icon} mx-auto mb-1`} />
-                        <div className={`text-lg font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
-                          {customStats.neutralRT !== null ? `${customStats.neutralRT}ms` : 'N/A'}
-                        </div>
-                        <div className={`text-xs ${currentTheme.icon}`}>Neutral</div>
-                      </div>
                     </div>
                   )}
+                  
+                  {/* Change Detection and general stats */}
+                  {(customStats.accuracy !== undefined || customStats.avgReactionTime !== undefined) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {customStats.accuracy !== undefined && (
+                        <div className="bg-emerald-50 rounded-lg p-4 text-center border border-emerald-200">
+                          <Target className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
+                          <div className="text-2xl font-bold text-emerald-800">
+                            {customStats.accuracy}%
+                          </div>
+                          <div className="text-sm text-emerald-600">Accuracy</div>
+                        </div>
+                      )}
+                      
+                      {customStats.avgReactionTime !== undefined && (
+                        <div className={`rounded-lg p-4 text-center border ${currentTheme.card}`}>
+                          <Clock className={`w-6 h-6 ${currentTheme.icon} mx-auto mb-2`} />
+                          <div className={`text-2xl font-bold ${currentTheme.accent.replace('text-', 'text-').replace('-600', '-800')}`}>
+                            {customStats.avgReactionTime}ms
+                          </div>
+                          <div className={`text-sm ${currentTheme.icon}`}>Avg Response Time</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Change Detection specific: Cowan's K */}
+                  {customStats.cowansK !== undefined && (
+                    <div className="bg-teal-50 rounded-lg p-4 text-center border border-teal-200">
+                      <div className="text-2xl font-bold text-teal-800">
+                        {customStats.cowansK.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-teal-600">Working Memory Capacity (K)</div>
+                    </div>
+                  )}
+                  
                   {customStats.trialsResponded !== undefined && (
                     <div className="text-center text-sm text-slate-600">
-                      Responded to {customStats.trialsResponded} out of {customStats.totalTargets} targets
+                      Responded to {customStats.trialsResponded} out of {customStats.totalTargets || results?.length || 'unknown'} targets
                     </div>
                   )}
                 </div>
