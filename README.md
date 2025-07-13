@@ -193,141 +193,190 @@ npx wrangler pages dev dist
 
 ## Deployment
 
-### Prerequisites
-- **Cloudflare account** (free tier is sufficient)
-- **Node.js 20+** installed locally
-- **Git repository** (for automated deployments)
+Deploy your own copy of this cognitive psychology experiment platform to Cloudflare Pages. This process sets up a live website that can collect and store experimental data from students.
 
-### Step 1: Create Cloudflare KV Namespace
-The application requires a KV namespace for data storage:
+### Quick Start (Recommended for Most Users)
+
+**1. Get a Free Cloudflare Account**
+- Go to [cloudflare.com](https://cloudflare.com) and sign up for a free account
+- No credit card required - the free tier is sufficient for most classroom use
+
+**2. Fork This Repository**
+- Click "Fork" at the top of this GitHub page to create your own copy
+- This allows you to customize the experiments and deploy automatically
+
+**3. Set Up Automatic Deployment**
+This creates a live website that updates automatically when you make changes:
+
+a) **Get your Cloudflare credentials:**
+   - Log into Cloudflare dashboard
+   - Go to "My Profile" → "API Tokens" → "Create Token"
+   - Use "Custom Token" and set:
+     - **Permissions**: `Cloudflare Pages:Edit`
+     - **Account Resources**: Include your account
+   - Copy the generated token
+   - From your Cloudflare dashboard main page, copy your **Account ID** (on the right sidebar)
+
+b) **Configure GitHub to deploy automatically:**
+   - In your forked repository, go to "Settings" → "Secrets and variables" → "Actions"
+   - Click "New repository secret" and add:
+     - **Name**: `CLOUDFLARE_API_TOKEN`
+     - **Value**: The API token from step 3a
+   - Add another secret:
+     - **Name**: `CLOUDFLARE_ACCOUNT_ID` 
+     - **Value**: Your Account ID from step 3a
+
+c) **Deploy:**
+   - Make any small change to trigger deployment (like editing this README)
+   - Push to the `main` branch
+   - GitHub will automatically build and deploy your site to Cloudflare Pages
+   - You'll get a URL like `https://cogsci-demos-abc.pages.dev`
+
+**4. Set Up Data Storage**
+The platform needs a place to store experimental data:
+
+a) **Install Wrangler CLI** (this is Cloudflare's command-line tool):
+   ```bash
+   npm install -g wrangler
+   ```
+
+b) **Login and create storage:**
+   ```bash
+   # Login to Cloudflare
+   wrangler login
+   
+   # Create the data storage namespace
+   wrangler kv namespace create RT_DB
+   ```
+
+c) **Configure storage in your project:**
+   - The command above will output something like:
+     ```
+     [[kv_namespaces]]
+     binding = "RT_DB"
+     id = "abc123def456"
+     ```
+   - Copy the `id` value
+   - Edit `wrangler.toml` in your repository and update the `id` field with your value
+   - Commit and push this change to trigger a new deployment
+
+**5. Set Your Instructor Password**
+This password protects access to session management and results:
+
+- In Cloudflare dashboard, go to Pages → your project → Settings → Environment variables
+- Add a new variable:
+  - **Name**: `INSTRUCTOR_PASSWORD`
+  - **Value**: Choose a secure password (this is what instructors will use to log in)
+  - **Environment**: Production
+
+**6. Test Your Deployment**
+- Visit your site URL
+- Go to `/login` and use your instructor password
+- Create a test session at `/sessions`
+- Try running an experiment
+- Check results at `/results`
+
+### Alternative: Manual Deployment
+
+If you prefer not to use GitHub automatic deployment:
 
 ```bash
-# Install Wrangler CLI if not already installed
-npm install -g wrangler
+# Clone the repository
+git clone https://github.com/yourusername/cogsci_demos.git
+cd cogsci_demos
 
-# Login to Cloudflare
-wrangler login
+# Install dependencies
+npm install
 
-# Create the KV namespace
-wrangler kv namespace create RT_DB
-```
-
-This will output something like:
-```
-🌀 Creating namespace with title "cogsci-demos-RT_DB"
-✅ Success!
-Add the following to your wrangler.toml:
-
-[[kv_namespaces]]
-binding = "RT_DB"
-id = "46389a6df4354ea3ac1909e7e03c37b6"
-
-⚠️  The above command created a namespace called "cogsci-demos-RT_DB". It is not configured for any environment. To use it, add it to your wrangler.toml under [env.production] or at the top level.
-```
-
-**Note:** The warning about `[env.production]` can be safely ignored for this project. The namespace is created successfully and will work with the top-level configuration.
-
-### Step 2: Update Configuration
-Update `wrangler.toml` with your KV namespace ID:
-
-```toml
-name = "cogsci-demos"
-compatibility_date = "2025-07-02"
-pages_build_output_dir = "dist"
-
-[[kv_namespaces]]
-binding = "RT_DB"
-id = "46389a6df4354ea3ac1909e7e03c37b6"  # Replace with your actual KV namespace ID
-```
-
-### Step 3: Set Instructor Password (IMPORTANT)
-The platform requires a password for instructor access to session creation and management features. Set the password as an environment variable:
-
-**For Local Development:**
-```bash
-# Create a .env file in your project root
-echo "INSTRUCTOR_PASSWORD=your_secure_password_here" > .env
-```
-
-**For Cloudflare Pages Deployment:**
-1. Go to your Cloudflare Pages dashboard
-2. Select your project
-3. Go to Settings → Environment variables
-4. Add a new variable:
-   - **Name:** `INSTRUCTOR_PASSWORD`
-   - **Value:** Your secure password
-   - **Environment:** Production (and Preview if desired)
-
-> **Security Note:** Choose a strong password and never commit it to your repository. The password is used for all instructor access including session creation, results viewing, and data management.
-
-### Step 4: Deploy Options
-
-#### Option A: Manual Deployment (Quick Start)
-```bash
 # Build the application
 npm run build
 
 # Deploy to Cloudflare Pages
-npm run deploy
+npx wrangler pages deploy dist --project-name=cogsci-demos
 ```
 
-The deploy command will:
-1. Upload your built application to Cloudflare Pages
-2. Create a project named "cogsci-demos" if it doesn't exist
-3. Set up the KV binding automatically
-4. Provide you with a live URL
+### Customization
 
-#### Option B: Automated GitHub Deployment (Recommended)
-For automatic deployments on every push:
+**Change Experiment Parameters:**
+- Edit files in `src/demos/` to modify trial counts, timing, stimuli
+- Update task configurations in `src/components/ui/taskConfigs.js`
 
-1. **Fork/clone this repository** to your GitHub account
+**Add New Experiments:**
+- Follow the patterns in existing demos
+- Use the `useTrialManager` hook for consistency
+- Add new result entities in `src/entities/`
 
-2. **Set up Cloudflare API credentials:**
-   - Go to Cloudflare dashboard → "My Profile" → "API Tokens"
-   - Create a token with "Cloudflare Pages:Edit" permissions
-   - Note your Account ID from the dashboard
+**Modify Styling:**
+- Edit Tailwind CSS classes throughout the components
+- Update the logo in `src/components/UniversityLogo.jsx`
 
-3. **Configure GitHub Secrets:**
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Add these repository secrets:
-     - `CLOUDFLARE_API_TOKEN`: Your API token from step 2
-     - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare account ID
+### Verification & Testing
 
-4. **Push to main branch** - deployment will happen automatically via GitHub Actions
-
-### Step 4: Configure Your Domain (Optional)
-After deployment, Cloudflare will provide a URL like `https://cogsci-demos.pages.dev`. You can:
-- Use this URL directly
-- Set up a custom domain in the Cloudflare Pages dashboard
-
-### Verification
 After deployment, verify everything works:
-1. Visit your deployed URL
-2. Try creating a session at `/sessions`
-3. Test a cognitive task
-4. Check the results dashboard at `/results`
+1. **Basic functionality**: Visit your site and navigate around
+2. **Instructor access**: Go to `/login` and use your password
+3. **Session creation**: Create a test session at `/sessions`
+4. **Experiment flow**: Complete a cognitive task end-to-end
+5. **Data collection**: Check that results appear at `/results`
+6. **CSV export**: Download session data to verify format
 
-### Troubleshooting
+### Going Live for Classes
+
+**For Instructors Using the Platform:**
+1. **Create sessions** at `your-site.pages.dev/sessions`
+2. **Share the session link** with students (each session gets a unique URL)
+3. **Monitor progress** in real-time at `/results`
+4. **Download data** as CSV files for analysis
+5. **Manage sessions** using the built-in tools for cleanup and organization
+
+**For Students:**
+- Students simply visit the session link provided by their instructor
+- No account creation required - just enter name and student ID
+- Complete the assigned experiment
+- Data automatically saved to the session
+
+### Troubleshooting Common Issues
 
 **"KV namespace not found" error:**
 - Ensure your KV namespace ID is correctly set in `wrangler.toml`
 - Verify the namespace exists: `wrangler kv:namespace list`
+- Make sure you've pushed the updated `wrangler.toml` to trigger a new deployment
 
 **"Wrangler requires Node.js v20+" error:**
-- Update Node.js: `brew install node@20` (macOS) or download from nodejs.org
+- Update Node.js to version 20 or higher
+- macOS: `brew install node@20` 
+- Windows/Linux: Download from [nodejs.org](https://nodejs.org)
 
-**Authentication "500 Internal Server Error":**
-- This typically occurs in local development if environment variables aren't properly configured
-- In local development, the system uses a hardcoded password `demo123`
-- In production, ensure `INSTRUCTOR_PASSWORD` is set in Cloudflare environment variables
+**Instructor login shows "500 Internal Server Error":**
+- Check that `INSTRUCTOR_PASSWORD` environment variable is set in Cloudflare Pages
+- For local development, the system uses a fallback password `demo123`
+- Ensure the password doesn't contain special characters that might cause issues
 
 **Build fails in GitHub Actions:**
-- Check that all dependencies are listed in `package.json`
-- Verify GitHub secrets are set correctly
+- Check that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets are set correctly
+- Verify the API token has `Cloudflare Pages:Edit` permissions
+- Look at the Actions tab in GitHub for detailed error messages
 
-**Functions not working:**
-- Ensure KV binding is properly configured
+**Deployment succeeds but site doesn't work:**
 - Check Cloudflare Pages dashboard → Functions tab for error logs
+- Ensure KV namespace binding is properly configured in `wrangler.toml`
+- Verify environment variables are set in Cloudflare (especially `INSTRUCTOR_PASSWORD`)
+
+**Students can't access sessions:**
+- Ensure the session link includes the full URL (e.g., `https://your-site.pages.dev/session/abc123`)
+- Check that the session was created successfully in the results dashboard
+- Verify KV storage is working by testing data collection yourself
+
+**Data not saving properly:**
+- Check browser console for JavaScript errors
+- Verify internet connection is stable
+- Ensure students are completing all required fields (name, student ID)
+- Check KV storage quota in Cloudflare dashboard
+
+**Need help?**
+- Check Cloudflare Pages documentation: [developers.cloudflare.com/pages](https://developers.cloudflare.com/pages/)
+- Review GitHub Actions logs for deployment issues
+- Consult the detailed setup guides in this repository: `SETUP.md`, `LOCAL_TESTING.md`
 
 ## API Endpoints
 
