@@ -5,13 +5,13 @@ A unified, robust platform for cognitive psychology experiments built with React
 ## Features
 
 ### Experiments
-- **Flanker Task**: Classic attention and response inhibition experiment
-- **Stroop Task**: Color-word interference experiment  
+- **Flanker Task**: Attention and response inhibition
+- **Stroop Task**: Color-word interference  
 - **Visual Search Task**: Target detection in visual arrays with pop-out and conjunction searches
-- **N-Back Task**: Working memory assessment (2-back paradigm)
-- **Posner Cueing Task**: Spatial attention and covert orienting with endogenous and exogenous cues
+- **N-Back Task**: Working memory with 2-back paradigm
+- **Posner Cueing Task**: Spatial attention and covert orienting with endogenous and exogenous cues, and variable SOA
 - **Mental Rotation Task**: Spatial cognition and mental transformation of 2D shapes with mirror images
-- **Unified Trial Management**: Robust, reusable trial sequencing framework
+- **Change Detection Task**: Visual working memory assessment with Cowan's K
 
 ### Platform Features
 - **Session Management**: Instructor-created sessions with unique codes
@@ -59,6 +59,12 @@ All experiments use the standardized `useTrialManager` hook for:
 - **Manual response control** for complex timing scenarios (e.g., Posner cueing with SOA delays)
 - **Flexible timing management** supporting both simple and multi-phase experimental designs
 
+### Multi-Phase Trial Manager
+The `useMultiPhaseTrialManager` hook extends the unified framework to support:
+- **Multi-phase experimental designs**: Seamlessly manage tasks with multiple phases, such as practice and test phases.
+- **Dynamic phase transitions**: Automatically transition between phases based on task-specific criteria.
+- **Enhanced timing control**: Configure phase-specific timing parameters for precise experimental control.
+
 ### Unified UI Components
 Consistent user experience through standardized components:
 - **TaskSetup**: Configurable participant setup with task-specific branding
@@ -81,6 +87,8 @@ src/
 │   ├── TaskSwitchDialog.jsx   # Task switching UI component
 │   ├── Thumbnails.jsx         # Task preview thumbnails
 │   ├── UniversityLogo.jsx     # Logo component
+│   ├── change-detection/ # Change detection-specific stimulus display
+│   │   ├── StimulusDisplay.jsx
 │   ├── flanker/         # Flanker-specific stimulus display
 │   ├── stroop/          # Stroop-specific stimulus display  
 │   ├── visual-search/   # Visual search stimulus display
@@ -89,6 +97,7 @@ src/
 │   ├── mental-rotation/ # Mental rotation task stimulus display
 │   └── results/         # Results dashboard components
 ├── demos/
+│   ├── ChangeDetection.jsx # Change detection task using unified framework
 │   ├── Flanker.jsx      # Flanker task using unified framework
 │   ├── Stroop.jsx       # Stroop task using unified framework
 │   ├── NBack.jsx        # N-Back task using unified framework
@@ -96,8 +105,10 @@ src/
 │   ├── MentalRotation.jsx # Mental rotation task using unified framework
 │   └── VisualSearch.jsx # Visual search task using unified framework
 ├── hooks/
-│   └── useTrialManager.js # Unified trial management framework
+│   ├── useTrialManager.js # Unified trial management framework
+│   ├── useMultiPhaseTrialManager.js # Multi-phase trial management framework
 ├── entities/
+│   ├── ChangeDetectionResult.js # Change detection data model and API
 │   ├── FlankerResult.js    # Flanker data model and API
 │   ├── StroopResult.js     # Stroop data model and API
 │   ├── NBackResult.js      # N-Back data model and API
@@ -110,6 +121,7 @@ src/
 │   ├── Results.jsx      # Instructor results dashboard
 │   ├── SessionJoin.jsx  # Student session join page
 │   ├── InstructorLogin.jsx # Instructor authentication page
+│   ├── ChangeDetectionInstructions.jsx # Change detection task instructions
 │   ├── FlankerInstructions.jsx # Flanker task instructions
 │   ├── StroopInstructions.jsx  # Stroop task instructions
 │   ├── VisualSearchInstructions.jsx # Visual search instructions
